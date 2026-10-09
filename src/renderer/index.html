@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GoalTrail</title>
+    <script>
+      try {
+        var stored = localStorage.getItem('goaltrail.theme')
+        var theme =
+          stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
+        var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        var dark = theme === 'dark' || (theme === 'system' && systemDark)
+        document.documentElement.classList.toggle('dark', dark)
+        var accent = localStorage.getItem('goaltrail.accent')
+        var density = localStorage.getItem('goaltrail.density')
+        if (accent === 'emerald' || accent === 'rose' || accent === 'amber' || accent === 'indigo') {
+          document.documentElement.dataset.accent = accent
+        }
+        if (density === 'compact' || density === 'comfortable') {
+          document.documentElement.dataset.density = density
+        }
+        if (navigator.userAgent.indexOf('Windows') !== -1) {
+          document.documentElement.dataset.win = '1'
+        }
+      } catch (error) {
+        /* Theme falls back to light if storage is unavailable. */
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

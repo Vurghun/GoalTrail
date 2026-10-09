@@ -1,0 +1,51 @@
+appId: com.goaltrail.desktop
+productName: GoalTrail
+directories:
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/**'
+  - '!shared/**'
+  - '!scripts/**'
+  - '!docs/**'
+  - '!.github/**'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!electron-builder.yml'
+  - '!{.eslintcache,.eslintignore,.eslintrc.cjs,.eslint.config.mjs,.prettierignore,.prettierrc.yaml,README.md,CONTRIBUTING.md,LICENSE}'
+  - '!{.env,.env.*,.npmrc}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{.gitignore,.gitattributes}'
+  - '!build/installer.nsh'
+# better-sqlite3 is a native addon. It cannot load from inside the app archive.
+asarUnpack:
+  - node_modules/better-sqlite3/**
+# postinstall already rebuilds the addon for Electron. A second rebuild fails on some Windows setups.
+npmRebuild: false
+win:
+  executableName: GoalTrail
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  # Fresh installs create both shortcuts. The setup page can remove either one.
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  include: build/installer.nsh
+mac:
+  category: public.app-category.productivity
+  target:
+    - dmg
+    - zip
+  artifactName: ${productName}-${version}-${arch}.${ext}
+linux:
+  target:
+    - AppImage
+    - deb
+  maintainer: GoalTrail contributors
+  category: Utility
+  artifactName: ${productName}-${version}-${arch}.${ext}
