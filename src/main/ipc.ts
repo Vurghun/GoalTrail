@@ -1,7 +1,8 @@
 import { app, ipcMain } from 'electron'
 import { APP_NAME, IpcChannel, type AppInfo } from '@shared/ipc'
+import { parsePomodoroStart } from '@shared/pomodoro'
 import { getDatabasePath } from './db'
-import { exportBackup, importBackup } from './backup'
+import { exportBackup, getBackupStatus, importBackup, showBackupsFolder } from './backup'
 import { exportData } from './export-data'
 import { closeMiniTimer, openMiniTimer, setWindowChrome } from './windows'
 import { getDashboard } from './dashboard'
@@ -25,16 +26,18 @@ import {
   setNotePinned,
   updateNote
 } from './notes'
+import { giveBackPomodoroFocus, getPomodoro, startPomodoro, stopPomodoro } from './pomodoro'
+import { sessionsMutated, timerMutated } from './runtime'
 import {
   createSession,
   deleteSession,
+  discardIdleTime,
   getTimer,
   listSessions,
-  pauseTimer,
-  startTimer,
-  stopTimer,
+  setSessionNote,
   updateSession
 } from './sessions'
+import { userPauseTimer, userStartTimer, userStopTimer } from './timer-actions'
 import { getSettings, showDataFolder, updateSettings } from './settings'
 import {
   createSpace,
@@ -74,10 +77,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannel.timerGet, () => getTimer())
   ipcMain.handle(IpcChannel.timerStart, (_event, spaceId: unknown) =>
-    startTimer(readId(spaceId, 'Space id'))
+    userStartTimer(readId(spaceId, 'Space id'))
   )
-  ipcMain.handle(IpcChannel.timerPause, () => pauseTimer())
-  ipcMain.handle(IpcChannel.timerStop, () => stopTimer())
+  ipcMain.handle(IpcChannel.timerPause, () => userPauseTimer())
+  ipcMain.handle(IpcChannel.timerStop, () => userStopTimer())
+  ipcMain.handle(IpcChannel.timerDiscardIdle, (_event, id: unknown, idleSec: unknown) => {
+    if (typeof idleSec !== 'number') throw new Error('Idle time is invalid.')
+    const result = discardIdleTime(readId(id, 'Time entry id'), idleSec)
+    giveBackPomodoroFocus(result.removedSec)
+    sessionsMutated()
+    timerMutated()
+    return result.session
+  })
   ipcMain.handle(IpcChannel.sessionsList, (_event, spaceId: unknown) =>
     listSessions(readId(spaceId, 'Space id'))
   )
@@ -89,6 +100,12 @@ export function registerIpcHandlers(): void {
   })
   ipcMain.handle(IpcChannel.sessionsDelete, (_event, id: unknown) => {
     deleteSession(readId(id, 'Time entry id'))
+  })
+  ipcMain.handle(IpcChannel.sessionsSetNote, (_event, id: unknown, note: unknown) => {
+    if (typeof note !== 'string') throw new Error('Note is invalid.')
+    const session = setSessionNote(readId(id, 'Time entry id'), note)
+    sessionsMutated()
+    return session
   })
 
   ipcMain.handle(IpcChannel.notesList, (_event, spaceId: unknown) => {
@@ -149,6 +166,15 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.settingsUpdate, (_event, input: unknown) => updateSettings(input))
   ipcMain.handle(IpcChannel.backupExport, () => exportBackup())
   ipcMain.handle(IpcChannel.backupImport, () => importBackup())
+  ipcMain.handle(IpcChannel.backupStatus, () => getBackupStatus())
+  ipcMain.handle(IpcChannel.backupShowFolder, () => {
+    showBackupsFolder()
+  })
+  ipcMain.handle(IpcChannel.pomodoroStart, (_event, input: unknown) => startPomodoro(parsePomodoroStart(input)))
+  ipcMain.handle(IpcChannel.pomodoroStop, () => {
+    stopPomodoro()
+  })
+  ipcMain.handle(IpcChannel.pomodoroGet, () => getPomodoro())
   ipcMain.handle(IpcChannel.dataExport, (_event, format: unknown) => exportData(format))
   ipcMain.handle(IpcChannel.dataFolderShow, () => {
     showDataFolder()

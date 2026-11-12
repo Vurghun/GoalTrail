@@ -18,6 +18,9 @@ export type Accent = (typeof ACCENTS)[number]
 export const DENSITIES = ['comfortable', 'compact'] as const
 export type Density = (typeof DENSITIES)[number]
 
+export const IDLE_PAUSE_CHOICES = [3, 5, 10, 15, 30] as const
+export const END_OF_DAY_HOUR = 20
+
 export interface AppSettings {
   theme: Theme
   weekStartsOn: number
@@ -26,6 +29,9 @@ export interface AppSettings {
   density: Density
   pomodoroFocusMin: number
   pomodoroBreakMin: number
+  notifications: boolean
+  endOfDayNudge: boolean
+  idlePauseMin: number | null
 }
 
 export interface SettingsSnapshot extends AppSettings {
@@ -40,7 +46,10 @@ export function defaultSettings(): AppSettings {
     accent: 'indigo',
     density: 'comfortable',
     pomodoroFocusMin: 25,
-    pomodoroBreakMin: 5
+    pomodoroBreakMin: 5,
+    notifications: true,
+    endOfDayNudge: true,
+    idlePauseMin: 5
   }
 }
 
@@ -106,7 +115,35 @@ export function parseSettingsPatch(input: unknown): Partial<AppSettings> {
     patch.pomodoroBreakMin = readMinutes(input.pomodoroBreakMin, 'Break length')
   }
 
+  if ('notifications' in input) {
+    patch.notifications = readBoolean(input.notifications, 'Notifications')
+  }
+
+  if ('endOfDayNudge' in input) {
+    patch.endOfDayNudge = readBoolean(input.endOfDayNudge, 'End-of-day reminder')
+  }
+
+  if ('idlePauseMin' in input) {
+    patch.idlePauseMin = readIdlePause(input.idlePauseMin)
+  }
+
   return patch
+}
+
+function readBoolean(value: unknown, label: string): boolean {
+  if (typeof value !== 'boolean') throw new Error(`${label} is invalid.`)
+  return value
+}
+
+function readIdlePause(value: unknown): number | null {
+  if (value === null) return null
+  if (
+    typeof value !== 'number' ||
+    !(IDLE_PAUSE_CHOICES as readonly number[]).includes(value)
+  ) {
+    throw new Error('Choose how long to wait before pausing.')
+  }
+  return value
 }
 
 function readMinutes(value: unknown, label: string): number {

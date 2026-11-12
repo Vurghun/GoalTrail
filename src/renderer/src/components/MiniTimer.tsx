@@ -25,12 +25,14 @@ export function MiniTimer(): React.JSX.Element {
       })
     }
     load()
+    const off = window.api.onTimerChanged(load)
     const poll = window.setInterval(load, 1000)
     const tick = window.setInterval(() => {
       setNow(Date.now())
     }, 1000)
     return () => {
       active = false
+      off()
       window.clearInterval(poll)
       window.clearInterval(tick)
     }

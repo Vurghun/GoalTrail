@@ -1,5 +1,6 @@
 import { DAILY_GOAL_MAX } from '@shared/progress'
 import {
+  IDLE_PAUSE_CHOICES,
   defaultSettings,
   isAccent,
   isDensity,
@@ -18,6 +19,10 @@ const ACCENT_KEY = 'accent'
 const DENSITY_KEY = 'density'
 const FOCUS_KEY = 'pomodoro_focus_min'
 const BREAK_KEY = 'pomodoro_break_min'
+const NOTIFY_KEY = 'notifications'
+const NUDGE_KEY = 'end_of_day_nudge'
+const IDLE_KEY = 'idle_pause_min'
+const NUDGE_DATE_KEY = 'nudge_date'
 
 export function getSettings(): SettingsSnapshot {
   const rows = getDatabase()
@@ -43,6 +48,9 @@ export function getSettings(): SettingsSnapshot {
     density: isDensity(densityValue) ? densityValue : defaults.density,
     pomodoroFocusMin: focus,
     pomodoroBreakMin: breakMin,
+    notifications: readFlag(stored.get(NOTIFY_KEY), defaults.notifications),
+    endOfDayNudge: readFlag(stored.get(NUDGE_KEY), defaults.endOfDayNudge),
+    idlePauseMin: readIdle(stored.get(IDLE_KEY), defaults.idlePauseMin),
     themeSaved: isTheme(themeValue)
   }
 }
@@ -60,6 +68,11 @@ export function updateSettings(input: unknown): SettingsSnapshot {
     if (patch.density !== undefined) writeSetting(DENSITY_KEY, patch.density)
     if (patch.pomodoroFocusMin !== undefined) writeSetting(FOCUS_KEY, String(patch.pomodoroFocusMin))
     if (patch.pomodoroBreakMin !== undefined) writeSetting(BREAK_KEY, String(patch.pomodoroBreakMin))
+    if (patch.notifications !== undefined) writeSetting(NOTIFY_KEY, patch.notifications ? '1' : '0')
+    if (patch.endOfDayNudge !== undefined) writeSetting(NUDGE_KEY, patch.endOfDayNudge ? '1' : '0')
+    if ('idlePauseMin' in patch) {
+      writeSetting(IDLE_KEY, patch.idlePauseMin === null ? 'off' : String(patch.idlePauseMin))
+    }
   })
   write()
   return getSettings()
@@ -78,8 +91,41 @@ export function currentSettings(): AppSettings {
     accent: snapshot.accent,
     density: snapshot.density,
     pomodoroFocusMin: snapshot.pomodoroFocusMin,
-    pomodoroBreakMin: snapshot.pomodoroBreakMin
+    pomodoroBreakMin: snapshot.pomodoroBreakMin,
+    notifications: snapshot.notifications,
+    endOfDayNudge: snapshot.endOfDayNudge,
+    idlePauseMin: snapshot.idlePauseMin
   }
+}
+
+export function getNudgeDate(): string | null {
+  const value = readSetting(NUDGE_DATE_KEY)
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null
+}
+
+export function setNudgeDate(date: string): void {
+  writeSetting(NUDGE_DATE_KEY, date)
+}
+
+function readFlag(value: string | undefined, fallback: boolean): boolean {
+  if (value === '1') return true
+  if (value === '0') return false
+  return fallback
+}
+
+function readIdle(value: string | undefined, fallback: number | null): number | null {
+  if (value === undefined) return fallback
+  if (value === 'off') return null
+  if (!/^\d+$/.test(value)) return fallback
+  const minutes = Number(value)
+  return (IDLE_PAUSE_CHOICES as readonly number[]).includes(minutes) ? minutes : fallback
+}
+
+function readSetting(key: string): string | undefined {
+  const row = getDatabase()
+    .prepare<[string], { value: string }>('SELECT value FROM settings WHERE key = ?')
+    .get(key)
+  return row?.value
 }
 
 function readStoredMinutes(value: string | undefined, fallback: number): number {

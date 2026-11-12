@@ -12,6 +12,7 @@ import { formatHoursMinutes, formatSessionDate, localDateKey } from '@shared/tim
 import { Heatmap } from '@renderer/components/Heatmap'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { fieldClass } from '@renderer/components/ui/styles'
+import { useSessionsChanged } from '@renderer/hooks/useSessionsChanged'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { errorMessage } from '@renderer/lib/errors'
 import type { useTimer } from '@renderer/hooks/useTimer'
@@ -36,6 +37,10 @@ export function ProgressPanel({ space, timer, onGoals }: ProgressPanelProps): Re
     space.weeklyGoalMin === null ? '' : String(space.weeklyGoalMin)
   )
   const [pendingDelete, setPendingDelete] = useState<Milestone | null>(null)
+
+  useSessionsChanged(() => {
+    setReloadToken((value) => value + 1)
+  })
 
   useEffect(() => {
     let active = true

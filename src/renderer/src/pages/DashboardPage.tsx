@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { CalendarDays, Clock, Flame, Play, Square, Timer, TrendingUp } from 'lucide-react'
-import { assembleDashboard, type DashboardRange, type DashboardSource } from '@shared/dashboard'
+import {
+  assembleDashboard,
+  isBestDaySoFar,
+  type DashboardRange,
+  type DashboardSource
+} from '@shared/dashboard'
 import { goalInsight, paceWindow, secondsInWindow } from '@shared/insights'
 import type { Space } from '@shared/spaces'
 import { formatHoursMinutes, formatSessionDate, localDateKey } from '@shared/time'
@@ -10,6 +15,7 @@ import { Heatmap } from '@renderer/components/Heatmap'
 import { Button } from '@renderer/components/ui/Button'
 import { Duration } from '@renderer/components/ui/Duration'
 import { IconTile } from '@renderer/components/ui/IconTile'
+import { useSessionsChanged } from '@renderer/hooks/useSessionsChanged'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { errorMessage } from '@renderer/lib/errors'
 import type { useTimer } from '@renderer/hooks/useTimer'
@@ -43,20 +49,30 @@ export function DashboardPage({
   useEffect(() => {
     if (!hasSpaces) return
     let active = true
-    void window.api
-      .getDashboard()
-      .then((next) => {
-        if (!active) return
-        setSource(next)
-        setError(null)
-      })
-      .catch((loadError: unknown) => {
-        if (active) setError(errorMessage(loadError))
-      })
+    const load = (): void => {
+      void window.api
+        .getDashboard()
+        .then((next) => {
+          if (!active) return
+          setSource(next)
+          setError(null)
+        })
+        .catch((loadError: unknown) => {
+          if (active) setError(errorMessage(loadError))
+        })
+    }
+    load()
     return () => {
       active = false
     }
   }, [hasSpaces, timer.session?.id, timer.session?.running, timer.session?.durationSec])
+
+  useSessionsChanged(() => {
+    if (!hasSpaces) return
+    void window.api.getDashboard().then(setSource).catch((loadError: unknown) => {
+      setError(errorMessage(loadError))
+    })
+  })
 
   const now = new Date(timer.now)
   const view = source ? assembleDashboard(source, timer.now, range, settings.weekStartsOn) : null
@@ -64,7 +80,7 @@ export function DashboardPage({
   const stats = source && view ? periodStats(source, view.todaySec, view.weekSec, settings.weekStartsOn, timer.now) : null
   const startable = spaces.filter((space) => space.status !== 'archived')
 
-  const cheer = celebration(view, source, spaces)
+  const cheer = celebration(view, source, spaces, timer.now)
   const visibleCheer =
     cheer && cheer.key !== goneCheer && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
       ? cheer
@@ -335,7 +351,8 @@ export function DashboardPage({
 function celebration(
   view: ReturnType<typeof assembleDashboard> | null,
   source: DashboardSource | null,
-  spaces: Space[]
+  spaces: Space[],
+  now: number
 ): { key: string; text: string } | null {
   if (!view || !source) return null
   const notes: { key: string; text: string }[] = []
@@ -352,10 +369,8 @@ function celebration(
       notes.push({ key: `done-${card.id}`, text: `${card.name} reached its target.` })
     }
   }
-  const previous = Math.max(0, ...view.days.slice(0, -1).map((day) => day.sec))
-  const today = view.days.at(-1)
-  if (today && today.sec > previous && today.sec >= 30 * 60) {
-    notes.push({ key: `best-${today.date}`, text: 'That is your best day so far.' })
+  if (isBestDaySoFar(source, now)) {
+    notes.push({ key: `best-${localDateKey(new Date(now))}`, text: 'That is your best day so far.' })
   }
   return notes.find((note) => localStorage.getItem(`goaltrail.celebrated.${note.key}`) !== '1') ?? null
 }

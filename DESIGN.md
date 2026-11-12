@@ -77,6 +77,6 @@ Content columns cap around 1200px. The sidebar is 260px and collapses to an icon
 - Focus mode: full-window timer, space-color glow, quick note, optional Pomodoro ring.
 - Mini timer: a small always-on-top window opened from the header while a timer is running.
 - Dashboard heatmap and plain-language goal insights.
-- A short burst when a streak hits 3, 7, or 30, a space reaches its hour target, or today beats every earlier day in the chart.
+- A short burst when a streak hits 3, 7, or 30, a space reaches its hour target, or today is the best day so far.
 - New space opens a template picker. An empty library shows a three-step welcome.
 - Settings groups Appearance, Timer, Data, and About. Data can export a zip backup, JSON, or CSV.

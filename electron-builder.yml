@@ -1,3 +1,4 @@
+# Windows toasts use this id. Keep it in sync with app.setAppUserModelId.
 appId: com.goaltrail.desktop
 productName: GoalTrail
 directories:

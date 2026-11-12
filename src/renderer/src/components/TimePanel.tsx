@@ -14,6 +14,7 @@ import {
 } from '@shared/time'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { fieldClass } from '@renderer/components/ui/styles'
+import { useSessionsChanged } from '@renderer/hooks/useSessionsChanged'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { errorMessage } from '@renderer/lib/errors'
 import type { useTimer } from '@renderer/hooks/useTimer'
@@ -61,6 +62,10 @@ export function TimePanel({ space, timer, children }: TimePanelProps): React.JSX
       active = false
     }
   }, [space.id, timer.session?.id, timer.session?.running, timer.session?.durationSec])
+
+  useSessionsChanged(() => {
+    void reload()
+  })
 
   async function saveDraft(draft: SessionDraft, sessionId?: string): Promise<void> {
     if (sessionId) await window.api.updateSession(sessionId, draft)

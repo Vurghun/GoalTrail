@@ -1,8 +1,10 @@
 import { BrowserWindow, shell } from 'electron'
 import { join } from 'path'
+import { isQuitting, isTrayReady } from './runtime'
 
 let mainWindow: BrowserWindow | null = null
 let miniWindow: BrowserWindow | null = null
+let onHide: (() => void) | null = null
 
 const LIGHT = '#f5f6fa'
 const DARK = '#0f1115'
@@ -22,6 +24,24 @@ function loadRenderer(win: BrowserWindow, view?: 'mini'): void {
   void win.loadFile(join(__dirname, '../renderer/index.html'), {
     query: view ? { view } : undefined
   })
+}
+
+export function setMainWindowHideHandler(handler: () => void): void {
+  onHide = handler
+}
+
+export function getMainWindow(): BrowserWindow | null {
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+}
+
+export function showMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createMainWindow()
+    return
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
 }
 
 export function createMainWindow(): BrowserWindow {
@@ -47,9 +67,19 @@ export function createMainWindow(): BrowserWindow {
     }
   })
   mainWindow = win
+  win.webContents.setBackgroundThrottling(false)
 
   win.on('ready-to-show', () => {
     win.show()
+  })
+
+  // Closing hides the window so a running timer survives. Quit is explicit.
+  win.on('close', (event) => {
+    if (isQuitting() || !isTrayReady()) return
+    event.preventDefault()
+    win.hide()
+    if (miniWindow && !miniWindow.isDestroyed()) miniWindow.show()
+    onHide?.()
   })
 
   win.on('closed', () => {
@@ -96,7 +126,6 @@ export function openMiniTimer(): void {
   const win = new BrowserWindow({
     width: 300,
     height: 92,
-    parent: mainWindow ?? undefined,
     alwaysOnTop: true,
     frame: false,
     resizable: false,
@@ -113,6 +142,7 @@ export function openMiniTimer(): void {
     }
   })
   miniWindow = win
+  win.webContents.setBackgroundThrottling(false)
   win.on('ready-to-show', () => {
     win.show()
   })
@@ -126,4 +156,19 @@ export function closeMiniTimer(): void {
   if (!miniWindow || miniWindow.isDestroyed()) return
   miniWindow.close()
   miniWindow = null
+}
+
+export function sendToMain(channel: string, payload?: unknown): void {
+  const win = getMainWindow()
+  if (!win) return
+  if (payload === undefined) win.webContents.send(channel)
+  else win.webContents.send(channel, payload)
+}
+
+export function sendToAll(channel: string, payload?: unknown): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win.isDestroyed()) continue
+    if (payload === undefined) win.webContents.send(channel)
+    else win.webContents.send(channel, payload)
+  }
 }

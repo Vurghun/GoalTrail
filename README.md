@@ -14,6 +14,10 @@ Images are not in the repo yet. Add them under [`docs/screenshots/`](docs/screen
 
 - Spaces for subjects such as C++ or Guitar, with status, color, and order
 - A timer, plus manual time entries
+- A system tray icon and desktop notifications when a Pomodoro ends, a daily goal is reached, or you step away
+- The timer pauses after a few minutes away, then asks whether to keep that time
+- A short note when you stop a session
+- Automatic backups on this computer, plus manual export and import
 - Notes with formatting, tags, pinned notes, search, and pasted images
 - Milestones, daily and weekly goals, streaks, and a progress score
 - A dashboard with time charts and recent notes
@@ -91,6 +95,14 @@ The database file is `goaltrail.db`. Note images sit in an `images` folder next 
 Set `GOALTRAIL_USER_DATA` to a folder path before launch to use a different data directory.
 
 Export a backup from Settings. The zip holds the database contents and the images. Import replaces everything currently stored, after you confirm.
+
+GoalTrail also writes a backup about once a day into a `backups` folder next to the database and keeps the latest 7. Settings shows when the last one was saved and can open that folder.
+
+## Tray
+
+Closing the window leaves GoalTrail running so a timer can keep going. While a timer is running, the tray icon's tooltip shows the space and the elapsed time. Click the icon to bring the window back. Quit from the tray menu, or from the app menu.
+
+Desktop notifications are on by default. Turn them off in Settings, along with the evening reminder.
 
 ## Roadmap
 

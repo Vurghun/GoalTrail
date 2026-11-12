@@ -1,14 +1,31 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, dialog, shell } from 'electron'
 import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate'
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'fs'
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from 'fs'
 import { join } from 'path'
+import {
+  AUTO_BACKUP_INTERVAL_MS,
+  AUTO_BACKUP_KEEP,
+  backupsToPrune,
+  type BackupStatus
+} from '@shared/backup'
 import { NOTE_IMAGE_BYTES_MAX } from '@shared/notes'
 import { isTheme } from '@shared/theme'
 import { getDatabase } from './db'
+import { isQuitting } from './runtime'
 import { reindexAllNotes } from './notes'
 import { noteImagesDir, resolveImagePath } from './note-images'
 
 const BACKUP_NAME = 'backup.json'
+const AUTO_BACKUP_FILE = /^goaltrail-\d{4}-\d{2}-\d{2}-\d{6}(?:-\d+)?\.zip$/
 const IMAGE_PATH =
   /^images\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:png|jpg|gif|webp)$/i
 const BACKUP_BYTES_MAX = 200 * 1024 * 1024
@@ -62,6 +79,81 @@ export async function importBackup(): Promise<BackupResult> {
   if (!filePath) return { canceled: true }
   restoreBackup(filePath)
   return { canceled: false }
+}
+
+export function backupsDirectory(): string {
+  return join(app.getPath('userData'), 'backups')
+}
+
+export function getBackupStatus(): BackupStatus {
+  const directory = backupsDirectory()
+  const files = listAutomaticBackups(directory)
+  const newest = files[0]
+  return {
+    lastBackupAt: newest ? new Date(newest.mtimeMs).toISOString() : null,
+    directory,
+    kept: AUTO_BACKUP_KEEP
+  }
+}
+
+export function showBackupsFolder(): void {
+  const directory = backupsDirectory()
+  mkdirSync(directory, { recursive: true })
+  void shell.openPath(directory)
+}
+
+export function startAutomaticBackups(onRan: (status: BackupStatus) => void): void {
+  const tick = (): void => {
+    if (isQuitting()) return
+    try {
+      if (!runAutomaticBackupIfDue()) return
+      onRan(getBackupStatus())
+    } catch (error) {
+      console.error(error)
+    }
+  }
+  setTimeout(tick, 20_000)
+  setInterval(tick, 60 * 60 * 1000)
+}
+
+export function runAutomaticBackupIfDue(): boolean {
+  const directory = backupsDirectory()
+  mkdirSync(directory, { recursive: true })
+  const files = listAutomaticBackups(directory)
+  const newest = files[0]
+  if (newest && Date.now() - newest.mtimeMs < AUTO_BACKUP_INTERVAL_MS) return false
+  const path = join(directory, uniqueBackupName(directory))
+  writeBackup(path)
+  const fresh = listAutomaticBackups(directory)
+  for (const old of backupsToPrune(fresh, AUTO_BACKUP_KEEP)) {
+    rmSync(join(directory, old.name), { force: true })
+  }
+  return true
+}
+
+function listAutomaticBackups(directory: string): { name: string; mtimeMs: number }[] {
+  if (!existsSync(directory)) return []
+  const files: { name: string; mtimeMs: number }[] = []
+  for (const name of readdirSync(directory)) {
+    if (!AUTO_BACKUP_FILE.test(name)) continue
+    const mtimeMs = statSync(join(directory, name)).mtimeMs
+    files.push({ name, mtimeMs })
+  }
+  files.sort((a, b) => b.mtimeMs - a.mtimeMs || b.name.localeCompare(a.name))
+  return files
+}
+
+function uniqueBackupName(directory: string): string {
+  const now = new Date()
+  const pad = (value: number): string => String(value).padStart(2, '0')
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+  const base = `goaltrail-${stamp}.zip`
+  if (!existsSync(join(directory, base))) return base
+  for (let suffix = 1; suffix < 100; suffix += 1) {
+    const name = `goaltrail-${stamp}-${suffix}.zip`
+    if (!existsSync(join(directory, name))) return name
+  }
+  return `goaltrail-${stamp}-${Date.now()}.zip`
 }
 
 function writeBackup(filePath: string): void {
