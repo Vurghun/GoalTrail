@@ -37,6 +37,7 @@ export const IpcChannel = {
   sessionsDelete: 'sessions:delete',
   sessionsSetNote: 'sessions:set-note',
   notesList: 'notes:list',
+  notesListAll: 'notes:list-all',
   notesGet: 'notes:get',
   notesCreate: 'notes:create',
   notesUpdate: 'notes:update',
@@ -119,6 +120,7 @@ export interface GoalTrailApi {
   updateSession: (id: string, draft: SessionDraft) => Promise<Session>
   deleteSession: (id: string) => Promise<void>
   listNotes: (spaceId: string) => Promise<NoteSummary[]>
+  listAllNotes: () => Promise<NoteSearchHit[]>
   getNote: (id: string) => Promise<Note>
   createNote: (spaceId: string) => Promise<Note>
   updateNote: (id: string, draft: NoteDraft) => Promise<Note>

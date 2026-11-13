@@ -4,6 +4,7 @@ const ROWS = [
   ['T', 'Start or stop the timer'],
   ['G then D', 'Go to the dashboard'],
   ['G then M', 'Go to milestones'],
+  ['G then N', 'Go to notes'],
   ['G then R', 'Go to the weekly review'],
   ['G then H', 'Go to session history'],
   ['?', 'Show these shortcuts'],

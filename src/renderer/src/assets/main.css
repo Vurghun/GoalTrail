@@ -247,11 +247,70 @@ body {
   list-style: disc;
 }
 
-.note-body img {
-  max-width: 100%;
-  height: auto;
+.note-body .node-image {
+  display: block;
+  max-width: min(100%, 640px);
   margin: 0.5rem 0;
-  border-radius: 12px;
+}
+
+.note-body .node-image + .node-image,
+.note-body .node-image:has(+ .node-image) {
+  display: inline-block;
+  width: 168px;
+  height: 132px;
+  margin: 0 8px 8px 0;
+  overflow: hidden;
+  border-radius: 8px;
+  vertical-align: top;
+  background: var(--bg);
+}
+
+.note-image {
+  position: relative;
+}
+
+.note-image-open {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.note-image img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: var(--bg);
+}
+
+.note-body .node-image + .node-image img,
+.note-body .node-image:has(+ .node-image) img {
+  height: 132px;
+  max-height: 132px;
+  object-fit: contain;
+}
+
+.note-image-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--surface);
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.note-image:hover .note-image-remove,
+.note-image:focus-within .note-image-remove {
+  opacity: 1;
 }
 
 .note-body p.is-empty::before,

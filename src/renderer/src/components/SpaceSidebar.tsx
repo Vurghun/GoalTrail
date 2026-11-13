@@ -5,6 +5,7 @@ import {
   History,
   LayoutDashboard,
   ListChecks,
+  NotebookPen,
   PanelLeft,
   Plus,
   Settings
@@ -27,11 +28,13 @@ interface SpaceSidebarProps {
   showingDashboard: boolean
   showingReview: boolean
   showingMilestones: boolean
+  showingNotes: boolean
   showingHistory: boolean
   showingSettings: boolean
   onShowDashboard: () => void
   onShowReview: () => void
   onShowMilestones: () => void
+  onShowNotes: () => void
   onShowHistory: () => void
   onShowSettings: () => void
 }
@@ -83,6 +86,13 @@ export function SpaceSidebar(props: SpaceSidebarProps): React.JSX.Element {
           collapsed={collapsed}
           selected={props.showingMilestones}
           onClick={props.onShowMilestones}
+        />
+        <NavButton
+          icon={NotebookPen}
+          label="Notes"
+          collapsed={collapsed}
+          selected={props.showingNotes}
+          onClick={props.onShowNotes}
         />
         <NavButton
           icon={History}

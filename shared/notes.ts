@@ -30,8 +30,11 @@ export interface NoteSummary {
   title: string
   pinned: boolean
   tags: string[]
+  createdAt: string
   updatedAt: string
   excerpt: string
+  imageCount: number
+  coverSrc: string | null
 }
 
 export interface Note extends NoteSummary {

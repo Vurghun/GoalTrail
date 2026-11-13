@@ -34,6 +34,7 @@ const api: GoalTrailApi = {
   updateSession: (id, draft) => invoke<Session>(IpcChannel.sessionsUpdate, id, draft),
   deleteSession: (id) => invoke<void>(IpcChannel.sessionsDelete, id),
   listNotes: (spaceId) => invoke<NoteSummary[]>(IpcChannel.notesList, spaceId),
+  listAllNotes: () => invoke<NoteSearchHit[]>(IpcChannel.notesListAll),
   getNote: (id) => invoke<Note>(IpcChannel.notesGet, id),
   createNote: (spaceId) => invoke<Note>(IpcChannel.notesCreate, spaceId),
   updateNote: (id, draft) => invoke<Note>(IpcChannel.notesUpdate, id, draft),

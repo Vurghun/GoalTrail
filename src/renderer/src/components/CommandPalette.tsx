@@ -22,6 +22,7 @@ interface CommandPaletteProps {
   onNewSpace: () => void
   onDashboard: () => void
   onMilestones: () => void
+  onNotes: () => void
   onReview: () => void
   onHistory: () => void
   onSettings: () => void
@@ -180,6 +181,13 @@ function buildCommands(
       label: 'Go to milestones',
       hint: 'G M',
       run: props.onMilestones
+    },
+    {
+      id: 'notes',
+      group: 'Actions',
+      label: 'Go to notes',
+      hint: 'G N',
+      run: props.onNotes
     },
     {
       id: 'history',

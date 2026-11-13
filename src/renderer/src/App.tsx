@@ -24,6 +24,7 @@ import { errorMessage } from '@renderer/lib/errors'
 import { pushToast } from '@renderer/lib/toast'
 import { DashboardPage } from '@renderer/pages/DashboardPage'
 import { HistoryPage } from '@renderer/pages/HistoryPage'
+import { NotesPage } from '@renderer/pages/NotesPage'
 import { MilestonesPage } from '@renderer/pages/MilestonesPage'
 import { ReviewPage } from '@renderer/pages/ReviewPage'
 import { SettingsPage } from '@renderer/pages/SettingsPage'
@@ -63,9 +64,9 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
   const [focusNoteId, setFocusNoteId] = useState<string | null>(null)
   const [noteReloadToken, setNoteReloadToken] = useState(0)
   const [shortcutError, setShortcutError] = useState<string | null>(null)
-  const [home, setHome] = useState<'dashboard' | 'review' | 'milestones' | 'history' | 'settings'>(
-    'dashboard'
-  )
+  const [home, setHome] = useState<
+    'dashboard' | 'review' | 'milestones' | 'notes' | 'history' | 'settings'
+  >('dashboard')
   const [historySpaceId, setHistorySpaceId] = useState<string | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [focusOpen, setFocusOpen] = useState(false)
@@ -142,7 +143,23 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
       if (command && key !== 'n' && key !== 't') return
 
       if (key === 'n') {
-        if (!selected || creating) return
+        if (chordRef.current === 'g') {
+          event.preventDefault()
+          chordRef.current = null
+          setHome('notes')
+          setCreating(false)
+          setSelectedId(null)
+          setSearchQuery('')
+          setSearchTag(null)
+          return
+        }
+        if (!selected || creating) {
+          if (home === 'notes') {
+            event.preventDefault()
+            window.dispatchEvent(new Event('goaltrail-new-note'))
+          }
+          return
+        }
         event.preventDefault()
         setShortcutError(null)
         setSearchQuery('')
@@ -234,6 +251,7 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
     }
   }, [
     creating,
+    home,
     selected,
     timer,
     focusOpen,
@@ -279,6 +297,7 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
           showingMilestones={
             home === 'milestones' && selectedId === null && !creating && !searching
           }
+          showingNotes={home === 'notes' && selectedId === null && !creating && !searching}
           showingHistory={home === 'history' && selectedId === null && !creating && !searching}
           showingSettings={home === 'settings' && selectedId === null && !creating && !searching}
           onShowDashboard={() => {
@@ -297,6 +316,13 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
           }}
           onShowMilestones={() => {
             setHome('milestones')
+            setCreating(false)
+            setSelectedId(null)
+            setSearchQuery('')
+            setSearchTag(null)
+          }}
+          onShowNotes={() => {
+            setHome('notes')
             setCreating(false)
             setSelectedId(null)
             setSearchQuery('')
@@ -456,6 +482,8 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
                 <SettingsPage />
               ) : home === 'review' ? (
                 <ReviewPage />
+              ) : home === 'notes' ? (
+                <NotesPage spaces={spaces} />
               ) : home === 'history' ? (
                 <HistoryPage spaces={spaces} spaceId={historySpaceId} onSpace={setHistorySpaceId} />
               ) : home === 'milestones' ? (
@@ -533,6 +561,14 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
         onMilestones={() => {
           setPaletteOpen(false)
           setHome('milestones')
+          setCreating(false)
+          setSelectedId(null)
+          setSearchQuery('')
+          setSearchTag(null)
+        }}
+        onNotes={() => {
+          setPaletteOpen(false)
+          setHome('notes')
           setCreating(false)
           setSelectedId(null)
           setSearchQuery('')

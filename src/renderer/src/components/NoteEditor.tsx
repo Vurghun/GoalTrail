@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
-import { EditorContent, useEditor } from '@tiptap/react'
+import {
+  EditorContent,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+  useEditor,
+  type NodeViewProps
+} from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import type { Note, NoteDraft } from '@shared/notes'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
@@ -16,6 +22,12 @@ interface NoteEditorProps {
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
+const NoteImage = Image.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(NoteImageView)
+  }
+})
+
 export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.JSX.Element {
   const [title, setTitle] = useState(note.title)
   const [tags, setTags] = useState(note.tags)
@@ -24,6 +36,7 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [viewing, setViewing] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const draftRef = useRef<NoteDraft>({ title: note.title, content: note.content, tags: note.tags })
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -35,8 +48,8 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Image.configure({ allowBase64: false }),
-      Placeholder.configure({ placeholder: 'Write here. Paste, drop, or insert an image.' })
+      NoteImage.configure({ allowBase64: false }),
+      Placeholder.configure({ placeholder: 'Write here. Paste, drop, or insert images.' })
     ],
     content: note.content,
     shouldRerenderOnTransaction: true,
@@ -76,6 +89,9 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
         const saved = await window.api.updateNote(noteIdRef.current, draft)
         setPinned(saved.pinned)
         setSaveState('saved')
+        window.setTimeout(() => {
+          setSaveState((current) => (current === 'saved' ? 'idle' : current))
+        }, 1600)
         onMetaRef.current(saved)
       } catch (saveFailure: unknown) {
         setSaveState('error')
@@ -94,25 +110,47 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
 
     insertRef.current = async (files) => {
       if (!editor) return
-      try {
-        for (const file of files) {
+      const srcs: string[] = []
+      let failure: unknown = null
+      for (const file of files) {
+        try {
           const bytes = new Uint8Array(await file.arrayBuffer())
           const saved = await window.api.saveNoteImage(noteIdRef.current, bytes, mimeOf(file))
-          editor.chain().focus().setImage({ src: saved.src }).run()
+          srcs.push(saved.src)
+        } catch (imageError: unknown) {
+          failure = imageError
         }
-        const html = editor.getHTML()
-        draftRef.current = { ...draftRef.current, content: html }
+      }
+      if (srcs.length > 0) {
+        editor
+          .chain()
+          .focus()
+          .insertContent(srcs.map((src) => ({ type: 'image', attrs: { src } })))
+          .run()
+        draftRef.current = { ...draftRef.current, content: editor.getHTML() }
         if (timerRef.current) {
           clearTimeout(timerRef.current)
           timerRef.current = null
         }
         await persist(draftRef.current)
-      } catch (imageError: unknown) {
+      }
+      if (failure) {
         setSaveState('error')
-        setSaveError(errorMessage(imageError))
+        setSaveError(errorMessage(failure))
       }
     }
   }, [editor, note.id, onMeta])
+
+  useEffect(() => {
+    const onView = (event: Event): void => {
+      const src = (event as CustomEvent<string>).detail
+      if (typeof src === 'string') setViewing(src)
+    }
+    window.addEventListener('goaltrail-view-image', onView)
+    return () => {
+      window.removeEventListener('goaltrail-view-image', onView)
+    }
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -141,10 +179,10 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
     saveState === 'pending' || saveState === 'saving'
       ? 'Saving…'
       : saveState === 'saved'
-        ? 'Saved just now'
+        ? 'Saved'
         : saveState === 'error'
           ? (saveError ?? 'Could not save')
-          : 'Changes save automatically'
+          : ''
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -153,7 +191,7 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
           value={title}
           aria-label="Note title"
           placeholder="Untitled"
-          className={`${fieldClass} text-base font-medium`}
+          className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none placeholder:text-faint"
           onChange={(event) => {
             const nextTitle = event.target.value
             setTitle(nextTitle)
@@ -163,7 +201,7 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
-            className="rounded-md border border-border px-3 py-2 text-sm"
+            className="rounded-md px-3 py-2 text-sm text-muted hover:bg-accent-soft hover:text-text"
             onClick={() => {
               void window.api
                 .setNotePinned(note.id, !pinned)
@@ -181,7 +219,7 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
           </button>
           <button
             type="button"
-            className="rounded-full px-3 py-2 text-sm text-danger hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+            className="rounded-md px-3 py-2 text-sm text-muted hover:text-danger"
             onClick={() => {
               setConfirmingDelete(true)
             }}
@@ -190,7 +228,7 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
           </button>
         </div>
       </div>
-      <p className={`text-xs ${saveState === 'error' ? 'text-danger' : 'text-muted'}`}>
+      <p className={`min-h-4 text-xs ${saveState === 'error' ? 'text-danger' : 'text-faint'}`}>
         {saveLabel}
       </p>
       <div className="flex flex-wrap items-center gap-2">
@@ -233,6 +271,7 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
           ref={fileRef}
           type="file"
           accept="image/png,image/jpeg,image/gif,image/webp"
+          multiple
           className="hidden"
           onChange={(event) => {
             const files = [...(event.target.files ?? [])]
@@ -278,6 +317,60 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
           }}
         />
       </div>
+      {viewing ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-10"
+          onClick={() => {
+            setViewing(null)
+          }}
+        >
+          <img
+            src={viewing}
+            alt=""
+            className="max-h-[80vh] max-w-[90vw] rounded-md object-contain"
+            onClick={(event) => {
+              event.stopPropagation()
+            }}
+          />
+          <div className="absolute top-4 right-4 flex gap-2">
+            <button
+              type="button"
+              className="rounded-md bg-surface px-3 py-2 text-sm font-medium"
+              onClick={(event) => {
+                event.stopPropagation()
+                const src = viewing
+                editor
+                  .chain()
+                  .focus()
+                  .command(({ tr, state }) => {
+                    let removed = false
+                    state.doc.descendants((node, pos) => {
+                      if (removed || node.type.name !== 'image' || node.attrs.src !== src) return
+                      tr.delete(pos, pos + node.nodeSize)
+                      removed = true
+                      return false
+                    })
+                    return removed
+                  })
+                  .run()
+                setViewing(null)
+              }}
+            >
+              Remove
+            </button>
+            <button
+              type="button"
+              className="rounded-md bg-surface px-3 py-2 text-sm font-medium"
+              onClick={(event) => {
+                event.stopPropagation()
+                setViewing(null)
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
       {confirmingDelete ? (
         <ConfirmDialog
           title={`Delete ${title.trim() || 'this note'}?`}
@@ -301,6 +394,37 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
         />
       ) : null}
     </div>
+  )
+}
+
+function NoteImageView({ node, deleteNode }: NodeViewProps): React.JSX.Element {
+  const src = typeof node.attrs.src === 'string' ? node.attrs.src : ''
+  return (
+    <NodeViewWrapper className="note-image">
+      <button
+        type="button"
+        className="note-image-open"
+        aria-label="View image"
+        onClick={() => {
+          window.dispatchEvent(new CustomEvent('goaltrail-view-image', { detail: src }))
+        }}
+      >
+        <img src={src} alt="" draggable={false} />
+      </button>
+      <button
+        type="button"
+        className="note-image-remove"
+        aria-label="Remove image"
+        onMouseDown={(event) => {
+          event.preventDefault()
+        }}
+        onClick={() => {
+          deleteNode()
+        }}
+      >
+        Remove
+      </button>
+    </NodeViewWrapper>
   )
 }
 

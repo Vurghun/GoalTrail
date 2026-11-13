@@ -26,6 +26,7 @@ import {
   createNote,
   deleteNote,
   getNote,
+  listAllNotes,
   listNotes,
   listTags,
   saveNoteImage,
@@ -123,6 +124,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.notesList, (_event, spaceId: unknown) => {
     return listNotes(readId(spaceId, 'Space id'))
   })
+  ipcMain.handle(IpcChannel.notesListAll, () => listAllNotes())
   ipcMain.handle(IpcChannel.notesGet, (_event, id: unknown) => getNote(readId(id, 'Note id')))
   ipcMain.handle(IpcChannel.notesCreate, (_event, spaceId: unknown) => {
     return createNote(readId(spaceId, 'Space id'))
@@ -192,7 +194,9 @@ export function registerIpcHandlers(): void {
     restoreAutomaticBackup(name)
     stopPomodoro()
   })
-  ipcMain.handle(IpcChannel.pomodoroStart, (_event, input: unknown) => startPomodoro(parsePomodoroStart(input)))
+  ipcMain.handle(IpcChannel.pomodoroStart, (_event, input: unknown) =>
+    startPomodoro(parsePomodoroStart(input))
+  )
   ipcMain.handle(IpcChannel.pomodoroStop, () => {
     stopPomodoro()
   })

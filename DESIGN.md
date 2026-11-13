@@ -77,6 +77,7 @@ The sidebar is 260px and collapses to an icon rail (`goaltrail.sidebar` in local
 - Dashboard: today, the week (opens the review), a short milestone summary, charts, spaces, recent notes.
 - Review: this week against last week, time by space, milestones finished, and one sentence drawn from that data.
 - Milestones: one list for every space. Open items with a date sort overdue first. A target date is optional. A space also has a Milestones tab with the same board.
+- Notes: a list for the whole app, and the same list inside a space. Search, sort by edited, created, or title, and pin. A note can hold several images, added together from the picker, the clipboard, or a drop. Images stay in the local images folder next to the database and travel with backups. Click one to see it larger. Removing it, or deleting the note, deletes the file.
 - History: saved sessions across the app, or filtered to one space. Notes and durations can be edited. A space home links here.
 - Space: overview is the home (today, this week, the next milestone, recent sessions). Name, description, icon, and color live behind Edit. Icons in that form are monochrome line icons. Milestones, notes, and progress stay as tabs. Progress keeps the score, goals, heatmap, and activity.
 - Focus mode: full-window timer, neutral field, quick note, optional Pomodoro ring.
@@ -85,7 +86,7 @@ The sidebar is 260px and collapses to an icon rail (`goaltrail.sidebar` in local
 ## Signature UI
 
 - Command palette (Ctrl K): actions, spaces, timers, notes, and recent items. Arrow keys move, Enter runs.
-- Shortcuts: `N` new note, `T` start or stop, `G` then `D` dashboard, `G` then `R` weekly review, `G` then `M` milestones, `G` then `H` session history, `?` cheat sheet, Esc closes overlays.
+- Shortcuts: `N` new note, `T` start or stop, `G` then `D` dashboard, `G` then `R` weekly review, `G` then `M` milestones, `G` then `N` notes, `G` then `H` session history, `?` cheat sheet, Esc closes overlays.
 - Focus mode: full-window timer, quick note, optional Pomodoro ring.
 - Mini timer: a small always-on-top window opened from the header while a timer is running.
 - A short burst when a streak hits 3, 7, or 30, a space reaches its hour target, or today beats every earlier day in the chart.

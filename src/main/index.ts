@@ -1,10 +1,17 @@
 import { app, dialog, protocol } from 'electron'
 import { IpcEvent } from '@shared/ipc'
 import { closeDatabase, openDatabase } from './db'
+import { sweepOrphanNoteImages } from './notes'
 import { registerIpcHandlers } from './ipc'
 import { registerNoteImageProtocol } from './note-images'
 import { pauseInterruptedTimer, pauseTimerForQuit } from './sessions'
-import { createMainWindow, sendToAll, sendToMain, setMainWindowHideHandler, showMainWindow } from './windows'
+import {
+  createMainWindow,
+  sendToAll,
+  sendToMain,
+  setMainWindowHideHandler,
+  showMainWindow
+} from './windows'
 import { createTray, hasTray, refreshTray } from './tray'
 import { trayImage } from './icon'
 import { notify, setNotificationIcon } from './notify'
@@ -53,6 +60,11 @@ app.whenReady().then(() => {
   }
 
   pauseInterruptedTimer()
+  try {
+    sweepOrphanNoteImages()
+  } catch (error) {
+    console.error(error)
+  }
   registerNoteImageProtocol()
   registerIpcHandlers()
   setNotificationIcon(trayImage(false))
