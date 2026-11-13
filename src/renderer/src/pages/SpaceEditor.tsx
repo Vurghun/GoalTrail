@@ -108,7 +108,6 @@ export function SpaceEditor({
           void submit()
         }}
       >
-        <h2 className="text-base font-semibold tracking-tight">Details</h2>
         {dirty && mode === 'edit' ? <p className="text-xs text-warning">Unsaved changes</p> : null}
         <label className="block text-sm">
           <span className={labelClass}>Name</span>
@@ -207,23 +206,23 @@ export function SpaceEditor({
         </div>
 
         {embedded ? null : (
-        <label className="block text-sm">
-          <span className={labelClass}>Status</span>
-          <select
-            className={fieldClass}
-            value={status}
-            onChange={(event) => {
-              const next = event.target.value
-              if (isStatus(next)) setStatus(next)
-            }}
-          >
-            {SPACE_STATUSES.map((option) => (
-              <option key={option} value={option}>
-                {SPACE_STATUS_LABELS[option]}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="block text-sm">
+            <span className={labelClass}>Status</span>
+            <select
+              className={fieldClass}
+              value={status}
+              onChange={(event) => {
+                const next = event.target.value
+                if (isStatus(next)) setStatus(next)
+              }}
+            >
+              {SPACE_STATUSES.map((option) => (
+                <option key={option} value={option}>
+                  {SPACE_STATUS_LABELS[option]}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">

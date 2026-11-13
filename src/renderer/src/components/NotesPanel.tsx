@@ -3,6 +3,7 @@ import type { Note, NoteSummary } from '@shared/notes'
 import { noteExcerpt } from '@shared/notes'
 import type { Space } from '@shared/spaces'
 import { NoteEditor } from '@renderer/components/NoteEditor'
+import { Button } from '@renderer/components/ui/Button'
 import { errorMessage } from '@renderer/lib/errors'
 
 interface NotesPanelProps {
@@ -83,21 +84,15 @@ export function NotesPanel({
 
   return (
     <section className="py-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Notes</h2>
-          <p className="text-sm text-muted">Changes save automatically.</p>
-        </div>
-        <button
-          type="button"
-          title="New note (Ctrl+N)"
-          className="rounded-md bg-accent px-4 py-2 text-sm text-white dark:text-[#14161c]"
+      <div className="mb-4 flex justify-end">
+        <Button
+          title="New note (N)"
           onClick={() => {
             void createNote()
           }}
         >
           New note
-        </button>
+        </Button>
       </div>
       {error ? <p className="mb-3 text-sm text-danger">{error}</p> : null}
       {loading && notes.length === 0 ? (
@@ -115,9 +110,7 @@ export function NotesPanel({
                   key={item.id}
                   type="button"
                   className={`rounded-lg border px-3 py-2 text-left ${
-                    item.id === selectedId
-                      ? 'border-accent bg-surface'
-                      : 'border-border'
+                    item.id === selectedId ? 'border-accent bg-surface' : 'border-border'
                   }`}
                   onClick={() => {
                     setSelectedId(item.id)

@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import { Pause, Play, Square } from 'lucide-react'
 import type { SpaceGoals } from '@shared/progress'
 import {
@@ -9,6 +10,7 @@ import {
   type SpaceStatus
 } from '@shared/spaces'
 import { formatClock } from '@shared/time'
+import { MilestoneBoard } from '@renderer/components/MilestoneBoard'
 import { NotesPanel } from '@renderer/components/NotesPanel'
 import { ProgressPanel } from '@renderer/components/ProgressPanel'
 import { TimePanel } from '@renderer/components/TimePanel'
@@ -21,7 +23,7 @@ import { SpaceEditor } from '@renderer/pages/SpaceEditor'
 
 type TimerApi = ReturnType<typeof useTimer>
 
-export type SpaceSection = 'overview' | 'notes' | 'progress'
+export type SpaceSection = 'overview' | 'notes' | 'milestones' | 'progress'
 
 interface SpacePageProps {
   space: Space
@@ -50,15 +52,17 @@ export function SpacePage({
   const running = openHere?.running ?? false
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-6 py-6">
-      <header
-        className={`flex flex-wrap items-center gap-4 rounded-lg border border-border bg-surface p-4 shadow-card ${running ? 'timer-glow' : ''}`}
-        style={running ? ({ '--timer': space.color } as React.CSSProperties) : undefined}
-      >
+    <div className="mx-auto w-full max-w-[1080px] px-8 py-8">
+      <header className="flex flex-wrap items-center gap-4">
         <IconTile icon={space.icon} color={space.color} size="lg" />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[28px] font-semibold leading-none tracking-tight">{space.name}</h1>
-          <p className="mt-2 truncate text-sm text-muted">{space.description || 'No description'}</p>
+          <h1 className="flex items-center gap-3 truncate text-3xl font-semibold tracking-tight">
+            {running ? <span className="timer-dot" aria-hidden /> : null}
+            <span className="truncate">{space.name}</span>
+          </h1>
+          {space.description ? (
+            <p className="mt-2 truncate text-sm text-muted">{space.description}</p>
+          ) : null}
         </div>
         <label className="text-sm">
           <span className="sr-only">Status</span>
@@ -122,12 +126,19 @@ export function SpacePage({
         )}
       </header>
 
-      <div className="mt-5 flex gap-1 border-b border-border" role="tablist" aria-label="Space">
+      <div className="mt-8 flex gap-1 border-b border-border" role="tablist" aria-label="Space">
         <SectionTab
           selected={section === 'overview'}
           label="Overview"
           onClick={() => {
             onSection('overview')
+          }}
+        />
+        <SectionTab
+          selected={section === 'milestones'}
+          label="Milestones"
+          onClick={() => {
+            onSection('milestones')
           }}
         />
         <SectionTab
@@ -163,6 +174,9 @@ export function SpacePage({
           </TimePanel>
         </div>
       ) : null}
+      {section === 'milestones' ? (
+        <MilestoneBoard key={space.id} spaces={[space]} variant="section" />
+      ) : null}
       {section === 'notes' ? (
         <NotesPanel
           key={space.id}
@@ -176,6 +190,9 @@ export function SpacePage({
           key={space.id}
           space={space}
           timer={timer}
+          onOpenMilestones={() => {
+            onSection('milestones')
+          }}
           onGoals={async (dailyGoalMin, weeklyGoalMin) => {
             await onGoals({ dailyGoalMin, weeklyGoalMin })
           }}
@@ -199,13 +216,19 @@ function SectionTab({
       type="button"
       role="tab"
       aria-selected={selected}
-      className={`relative px-3 py-2 text-sm font-medium transition duration-150 ${
+      className={`relative px-3 py-2.5 text-sm font-medium transition-colors duration-150 ${
         selected ? 'text-text' : 'text-muted hover:text-text'
       }`}
       onClick={onClick}
     >
       {label}
-      {selected ? <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent" /> : null}
+      {selected ? (
+        <motion.span
+          layoutId="space-section"
+          className="absolute inset-x-3 -bottom-px h-px bg-text"
+          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        />
+      ) : null}
     </button>
   )
 }

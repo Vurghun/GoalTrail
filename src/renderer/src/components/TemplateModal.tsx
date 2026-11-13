@@ -9,7 +9,7 @@ export function TemplateModal({
   onPick: (template: SpaceTemplate) => void
 }): React.JSX.Element {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#17191f]/45 p-4">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
       <div
         role="dialog"
         aria-modal="true"
@@ -19,7 +19,9 @@ export function TemplateModal({
         <h2 id="template-title" className="text-lg font-semibold tracking-tight">
           New space
         </h2>
-        <p className="mt-1 text-sm text-muted">Pick a starting point. You can change every detail after.</p>
+        <p className="mt-1 text-sm text-muted">
+          Pick a starting point. You can change every detail after.
+        </p>
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {SPACE_TEMPLATES.map((template) => (
             <li key={template.id}>

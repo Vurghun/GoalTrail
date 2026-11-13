@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { MotionConfig } from 'motion/react'
 import { PictureInPicture2, Search, Timer } from 'lucide-react'
 import type { IdlePrompt } from '@shared/idle'
 import type { SessionWrapUp } from '@shared/ipc'
@@ -12,8 +13,8 @@ import { TemplateModal } from '@renderer/components/TemplateModal'
 import { NoteSearch } from '@renderer/components/NoteSearch'
 import { ToastHost } from '@renderer/components/ToastHost'
 import { SpaceSidebar } from '@renderer/components/SpaceSidebar'
-import { ThemeToggle } from '@renderer/components/ThemeToggle'
 import { TimerBar } from '@renderer/components/TimerBar'
+import { ViewTransition } from '@renderer/components/ViewTransition'
 import { SettingsProvider } from '@renderer/components/SettingsProvider'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useSpaces } from '@renderer/hooks/useSpaces'
@@ -22,6 +23,7 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import { errorMessage } from '@renderer/lib/errors'
 import { pushToast } from '@renderer/lib/toast'
 import { DashboardPage } from '@renderer/pages/DashboardPage'
+import { MilestonesPage } from '@renderer/pages/MilestonesPage'
 import { SettingsPage } from '@renderer/pages/SettingsPage'
 import { SpaceEditor } from '@renderer/pages/SpaceEditor'
 import { SpacePage, type SpaceSection } from '@renderer/pages/SpacePage'
@@ -29,9 +31,11 @@ import { SpacePage, type SpaceSection } from '@renderer/pages/SpacePage'
 export function App(): React.JSX.Element {
   const { theme, setTheme } = useTheme()
   return (
-    <SettingsProvider setTheme={setTheme}>
-      <AppShell theme={theme} />
-    </SettingsProvider>
+    <MotionConfig reducedMotion="user" transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}>
+      <SettingsProvider setTheme={setTheme}>
+        <AppShell theme={theme} />
+      </SettingsProvider>
+    </MotionConfig>
   )
 }
 
@@ -57,7 +61,7 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
   const [focusNoteId, setFocusNoteId] = useState<string | null>(null)
   const [noteReloadToken, setNoteReloadToken] = useState(0)
   const [shortcutError, setShortcutError] = useState<string | null>(null)
-  const [home, setHome] = useState<'dashboard' | 'settings'>('dashboard')
+  const [home, setHome] = useState<'dashboard' | 'milestones' | 'settings'>('dashboard')
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [focusOpen, setFocusOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -187,213 +191,264 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
         setSearchQuery('')
         setSearchTag(null)
       }
+
+      if (key === 'm' && chordRef.current === 'g') {
+        event.preventDefault()
+        chordRef.current = null
+        setHome('milestones')
+        setCreating(false)
+        setSelectedId(null)
+        setSearchQuery('')
+        setSearchTag(null)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => {
       window.removeEventListener('keydown', onKey)
     }
-  }, [creating, selected, timer, focusOpen, paletteOpen, shortcutsOpen, templatesOpen, idlePrompt, wrapUp])
+  }, [
+    creating,
+    selected,
+    timer,
+    focusOpen,
+    paletteOpen,
+    shortcutsOpen,
+    templatesOpen,
+    idlePrompt,
+    wrapUp
+  ])
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-bg text-text">
       <div className="window-spacer shrink-0 bg-bg" />
       <div className="flex min-h-0 flex-1">
-      <SpaceSidebar
-        spaces={spaces}
-        loading={loading}
-        error={error}
-        selectedId={creating || searching ? null : selectedId}
-        creating={creating}
-        onSelect={(id) => {
-          setCreating(false)
-          setSelectedId(id)
-          setSection('overview')
-          setFocusNoteId(null)
-          setSearchQuery('')
-          setSearchTag(null)
-          setPaletteOpen(false)
-        }}
-        onStartCreate={() => {
-          setTemplatesOpen(true)
-        }}
-        onMove={(id, direction) => {
-          void moveSpace(id, direction)
-        }}
-        onPlace={(id, beforeId) => {
-          void placeSpace(id, beforeId)
-        }}
-        timingSpaceId={timer.session?.spaceId ?? null}
-        timingRunning={timer.session?.running ?? false}
-        showingDashboard={home === 'dashboard' && selectedId === null && !creating && !searching}
-        showingSettings={home === 'settings' && selectedId === null && !creating && !searching}
-        onShowDashboard={() => {
-          setHome('dashboard')
-          setCreating(false)
-          setSelectedId(null)
-          setSearchQuery('')
-          setSearchTag(null)
-        }}
-        onShowSettings={() => {
-          setHome('settings')
-          setCreating(false)
-          setSelectedId(null)
-          setSearchQuery('')
-          setSearchTag(null)
-        }}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-      <header className="flex items-center gap-4 border-b border-border bg-surface px-5 py-3">
-        <p className="min-w-0 truncate text-sm font-medium text-muted">
-          {searching ? 'Search' : creating ? 'New space' : selected ? selected.name : home === 'settings' ? 'Settings' : 'Dashboard'}
-        </p>
-        <button
-          type="button"
-          className="titlebar-no-drag mx-auto flex w-full max-w-md items-center gap-2 rounded-md border border-border bg-bg px-3 py-2 text-sm text-faint transition duration-150 hover:border-line"
-          onClick={() => {
-            setPaletteOpen(true)
+        <SpaceSidebar
+          spaces={spaces}
+          loading={loading}
+          error={error}
+          selectedId={creating || searching ? null : selectedId}
+          creating={creating}
+          onSelect={(id) => {
+            setCreating(false)
+            setSelectedId(id)
+            setSection('overview')
+            setFocusNoteId(null)
+            setSearchQuery('')
+            setSearchTag(null)
+            setPaletteOpen(false)
           }}
-        >
-          <Search size={15} />
-          <span className="flex-1 text-left">Search</span>
-          <span className="rounded border border-border px-1.5 py-0.5 text-[11px]">Ctrl K</span>
-        </button>
-        <div className="titlebar-no-drag flex items-center gap-2">
-          {timer.session ? (
-            <TimerBar
-              session={timer.session}
-              space={timingSpace}
-              elapsed={timer.elapsed}
-              onSelect={() => {
-                setCreating(false)
-                setSearchQuery('')
-                setSearchTag(null)
-                setSelectedId(timer.session?.spaceId ?? null)
-                setSection('overview')
+          onStartCreate={() => {
+            setTemplatesOpen(true)
+          }}
+          onMove={(id, direction) => {
+            void moveSpace(id, direction)
+          }}
+          onPlace={(id, beforeId) => {
+            void placeSpace(id, beforeId)
+          }}
+          timingSpaceId={timer.session?.spaceId ?? null}
+          timingRunning={timer.session?.running ?? false}
+          showingDashboard={home === 'dashboard' && selectedId === null && !creating && !searching}
+          showingMilestones={
+            home === 'milestones' && selectedId === null && !creating && !searching
+          }
+          showingSettings={home === 'settings' && selectedId === null && !creating && !searching}
+          onShowDashboard={() => {
+            setHome('dashboard')
+            setCreating(false)
+            setSelectedId(null)
+            setSearchQuery('')
+            setSearchTag(null)
+          }}
+          onShowMilestones={() => {
+            setHome('milestones')
+            setCreating(false)
+            setSelectedId(null)
+            setSearchQuery('')
+            setSearchTag(null)
+          }}
+          onShowSettings={() => {
+            setHome('settings')
+            setCreating(false)
+            setSelectedId(null)
+            setSearchQuery('')
+            setSearchTag(null)
+          }}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex items-center gap-3 border-b border-border bg-bg px-5 py-3">
+            <button
+              type="button"
+              className="titlebar-no-drag flex w-full max-w-xl items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm text-faint transition duration-150 ease-out hover:border-line"
+              onClick={() => {
+                setPaletteOpen(true)
               }}
-              onPause={() => {
-                void timer.pause()
-              }}
-              onResume={() => {
-                if (timer.session) void timer.start(timer.session.spaceId)
-              }}
-              onStop={() => {
-                void timer.stop()
-              }}
-            />
+            >
+              <Search size={15} />
+              <span className="flex-1 text-left">Search</span>
+              <span className="rounded border border-border px-1.5 py-0.5 text-[11px]">Ctrl K</span>
+            </button>
+            <div className="titlebar-no-drag flex items-center gap-2">
+              {timer.session ? (
+                <TimerBar
+                  session={timer.session}
+                  space={timingSpace}
+                  elapsed={timer.elapsed}
+                  onSelect={() => {
+                    setCreating(false)
+                    setSearchQuery('')
+                    setSearchTag(null)
+                    setSelectedId(timer.session?.spaceId ?? null)
+                    setSection('overview')
+                  }}
+                  onPause={() => {
+                    void timer.pause()
+                  }}
+                  onResume={() => {
+                    if (timer.session) void timer.start(timer.session.spaceId)
+                  }}
+                  onStop={() => {
+                    void timer.stop()
+                  }}
+                />
+              ) : null}
+              {timer.session ? (
+                <>
+                  <button
+                    type="button"
+                    className="rounded-md p-2 text-muted hover:bg-accent-soft hover:text-text"
+                    aria-label="Focus mode"
+                    onClick={() => {
+                      setFocusOpen(true)
+                    }}
+                  >
+                    <Timer size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md p-2 text-muted hover:bg-accent-soft hover:text-text"
+                    aria-label="Open mini timer"
+                    onClick={() => {
+                      void window.api.openMiniTimer()
+                    }}
+                  >
+                    <PictureInPicture2 size={16} />
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </header>
+          {shortcutError ? (
+            <p className="border-b border-border px-6 py-2 text-sm text-danger">{shortcutError}</p>
           ) : null}
-          {timer.session ? (
-            <>
-              <button
-                type="button"
-                className="rounded-md p-2 text-muted hover:bg-accent-soft hover:text-text"
-                aria-label="Focus mode"
-                onClick={() => {
-                  setFocusOpen(true)
-                }}
-              >
-                <Timer size={16} />
-              </button>
-              <button
-                type="button"
-                className="rounded-md p-2 text-muted hover:bg-accent-soft hover:text-text"
-                aria-label="Open mini timer"
-                onClick={() => {
-                  void window.api.openMiniTimer()
-                }}
-              >
-                <PictureInPicture2 size={16} />
-              </button>
-            </>
-          ) : null}
-          <ThemeToggle
-            theme={theme}
-            onChange={(next) => {
-              void updateSettings({ theme: next }).catch((reason: unknown) => {
-                setShortcutError(errorMessage(reason))
-              })
-            }}
-          />
+          <div className="relative min-h-0 flex-1">
+            <ViewTransition
+              viewKey={
+                searching
+                  ? 'search'
+                  : creating
+                    ? 'create'
+                    : selected
+                      ? `${selected.id}:${section}`
+                      : home
+              }
+            >
+              {searching ? (
+                <NoteSearch
+                  text={searchQuery.trim()}
+                  spaceId={selected?.id ?? null}
+                  spaceName={selected?.name ?? null}
+                  tag={searchTag}
+                  onTag={setSearchTag}
+                  onOpen={(spaceId, noteId) => {
+                    setSearchQuery('')
+                    setSearchTag(null)
+                    setCreating(false)
+                    setSelectedId(spaceId)
+                    setSection('notes')
+                    setFocusNoteId(noteId)
+                    setNoteReloadToken((value) => value + 1)
+                  }}
+                />
+              ) : creating ? (
+                <SpaceEditor
+                  key="new-space"
+                  mode="create"
+                  initial={createDraft ?? emptySpaceDraft()}
+                  onSubmit={async (draft) => {
+                    const created = await createSpace(draft)
+                    setCreating(false)
+                    setSelectedId(created.id)
+                  }}
+                />
+              ) : selected ? (
+                <SpacePage
+                  space={selected}
+                  section={section}
+                  onSection={setSection}
+                  timer={timer}
+                  focusNoteId={focusNoteId}
+                  noteReloadToken={noteReloadToken}
+                  onUpdate={async (draft) => {
+                    await updateSpace(selected.id, draft)
+                    await timer.refresh()
+                  }}
+                  onDelete={async () => {
+                    await deleteSpace(selected.id)
+                    setSelectedId(null)
+                    await timer.refresh()
+                  }}
+                  onGoals={async (goals) => {
+                    await setSpaceGoals(selected.id, goals)
+                  }}
+                />
+              ) : home === 'settings' ? (
+                <SettingsPage />
+              ) : home === 'milestones' ? (
+                <MilestonesPage
+                  spaces={spaces}
+                  onOpenSpace={(spaceId) => {
+                    setCreating(false)
+                    setSelectedId(spaceId)
+                    setSection('milestones')
+                    setSearchQuery('')
+                    setSearchTag(null)
+                  }}
+                />
+              ) : (
+                <DashboardPage
+                  hasSpaces={spaces.length > 0}
+                  spaces={spaces}
+                  timer={timer}
+                  onCreateSpace={() => {
+                    setTemplatesOpen(true)
+                  }}
+                  onOpenSpace={(spaceId, next = 'overview') => {
+                    setCreating(false)
+                    setSelectedId(spaceId)
+                    setSection(next)
+                    setSearchQuery('')
+                    setSearchTag(null)
+                  }}
+                  onOpenMilestones={() => {
+                    setHome('milestones')
+                    setCreating(false)
+                    setSelectedId(null)
+                    setSearchQuery('')
+                    setSearchTag(null)
+                  }}
+                  onOpenNote={(spaceId, noteId) => {
+                    setCreating(false)
+                    setSelectedId(spaceId)
+                    setSection('notes')
+                    setFocusNoteId(noteId)
+                    setNoteReloadToken((value) => value + 1)
+                  }}
+                />
+              )}
+            </ViewTransition>
+          </div>
         </div>
-      </header>
-      {shortcutError ? (
-        <p className="border-b border-border px-6 py-2 text-sm text-danger">{shortcutError}</p>
-      ) : null}
-      <div className="min-h-0 flex-1 overflow-y-auto">
-          {searching ? (
-            <NoteSearch
-              text={searchQuery.trim()}
-              spaceId={selected?.id ?? null}
-              spaceName={selected?.name ?? null}
-              tag={searchTag}
-              onTag={setSearchTag}
-              onOpen={(spaceId, noteId) => {
-                setSearchQuery('')
-                setSearchTag(null)
-                setCreating(false)
-                setSelectedId(spaceId)
-                setSection('notes')
-                setFocusNoteId(noteId)
-                setNoteReloadToken((value) => value + 1)
-              }}
-            />
-          ) : creating ? (
-            <SpaceEditor
-              key="new-space"
-              mode="create"
-              initial={createDraft ?? emptySpaceDraft()}
-              onSubmit={async (draft) => {
-                const created = await createSpace(draft)
-                setCreating(false)
-                setSelectedId(created.id)
-              }}
-            />
-          ) : selected ? (
-            <SpacePage
-              space={selected}
-              section={section}
-              onSection={setSection}
-              timer={timer}
-              focusNoteId={focusNoteId}
-              noteReloadToken={noteReloadToken}
-              onUpdate={async (draft) => {
-                await updateSpace(selected.id, draft)
-                await timer.refresh()
-              }}
-              onDelete={async () => {
-                await deleteSpace(selected.id)
-                setSelectedId(null)
-                await timer.refresh()
-              }}
-              onGoals={async (goals) => {
-                await setSpaceGoals(selected.id, goals)
-              }}
-            />
-          ) : home === 'settings' ? (
-            <SettingsPage />
-          ) : (
-            <DashboardPage
-              hasSpaces={spaces.length > 0}
-              spaces={spaces}
-              timer={timer}
-              onCreateSpace={() => {
-                setTemplatesOpen(true)
-              }}
-              onOpenSpace={(spaceId) => {
-                setCreating(false)
-                setSelectedId(spaceId)
-                setSection('overview')
-              }}
-              onOpenNote={(spaceId, noteId) => {
-                setCreating(false)
-                setSelectedId(spaceId)
-                setSection('notes')
-                setFocusNoteId(noteId)
-                setNoteReloadToken((value) => value + 1)
-              }}
-            />
-          )}
-      </div>
-      </div>
       </div>
       <CommandPalette
         key={paletteOpen ? 'open' : 'closed'}
@@ -409,6 +464,14 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
         onDashboard={() => {
           setPaletteOpen(false)
           setHome('dashboard')
+          setCreating(false)
+          setSelectedId(null)
+          setSearchQuery('')
+          setSearchTag(null)
+        }}
+        onMilestones={() => {
+          setPaletteOpen(false)
+          setHome('milestones')
           setCreating(false)
           setSelectedId(null)
           setSearchQuery('')

@@ -36,6 +36,7 @@ export function DashboardCharts({
 }: DashboardChartsProps): React.JSX.Element {
   const scale = chartScale(Math.max(...days.map((day) => day.sec), 0))
   const series = seriesFor(days, spaces)
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const rows = days.map((day) => {
     const row: Record<string, string | number> = {
       label: day.label,
@@ -54,9 +55,25 @@ export function DashboardCharts({
       <section className="rounded-lg border border-border bg-surface p-5 shadow-card">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold tracking-tight">Time per day</h2>
-          <div className="flex rounded-md border border-border bg-bg p-1" role="group" aria-label="Chart range">
-            <RangeButton label="7d" selected={range === 7} onClick={() => { onRange(7) }} />
-            <RangeButton label="30d" selected={range === 30} onClick={() => { onRange(30) }} />
+          <div
+            className="flex rounded-md border border-border bg-bg p-1"
+            role="group"
+            aria-label="Chart range"
+          >
+            <RangeButton
+              label="7d"
+              selected={range === 7}
+              onClick={() => {
+                onRange(7)
+              }}
+            />
+            <RangeButton
+              label="30d"
+              selected={range === 30}
+              onClick={() => {
+                onRange(30)
+              }}
+            />
           </div>
         </div>
         <div className="h-64">
@@ -83,7 +100,9 @@ export function DashboardCharts({
                 cursor={{ fill: 'var(--accent-soft)' }}
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.length) return null
-                  const lines = payload.filter((item) => item.dataKey !== 'stub' && Number(item.value) > 0)
+                  const lines = payload.filter(
+                    (item) => item.dataKey !== 'stub' && Number(item.value) > 0
+                  )
                   const sec = lines.reduce((sum, item) => sum + Number(item.value ?? 0), 0)
                   return (
                     <div className="rounded-md border border-border bg-raised px-3 py-2 text-sm shadow-card">
@@ -92,10 +111,18 @@ export function DashboardCharts({
                       {lines.length > 1 ? (
                         <ul className="mt-2 space-y-1">
                           {lines.map((item) => (
-                            <li key={String(item.dataKey)} className="flex items-center gap-2 text-xs">
-                              <span className="h-2 w-2 rounded-full" style={{ background: item.color }} />
+                            <li
+                              key={String(item.dataKey)}
+                              className="flex items-center gap-2 text-xs"
+                            >
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ background: item.color }}
+                              />
                               <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                              <span className="tabular-nums">{formatHoursMinutes(Number(item.value))}</span>
+                              <span className="tabular-nums">
+                                {formatHoursMinutes(Number(item.value))}
+                              </span>
                             </li>
                           ))}
                         </ul>
@@ -118,10 +145,10 @@ export function DashboardCharts({
                   dataKey={space.id}
                   name={space.name}
                   stackId="time"
-                  fill={space.color}
-                  radius={index === series.length - 1 ? [6, 6, 0, 0] : undefined}
-                  animationDuration={320}
-                  isAnimationActive
+                  fill={inkFill(index)}
+                  radius={index === series.length - 1 ? [4, 4, 0, 0] : undefined}
+                  animationDuration={280}
+                  isAnimationActive={!reduceMotion}
                 />
               ))}
             </BarChart>
@@ -129,9 +156,9 @@ export function DashboardCharts({
         </div>
         {series.length > 1 ? (
           <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
-            {series.map((space) => (
+            {series.map((space, index) => (
               <li key={space.id} className="flex items-center gap-1.5 text-xs text-muted">
-                <span className="h-2 w-2 rounded-full" style={{ background: space.color }} />
+                <span className="h-2 w-2 rounded-full" style={{ background: inkFill(index) }} />
                 {space.name}
               </li>
             ))}
@@ -153,12 +180,13 @@ export function DashboardCharts({
                     nameKey="name"
                     innerRadius={62}
                     outerRadius={84}
-                    paddingAngle={3}
-                    cornerRadius={6}
+                    paddingAngle={1}
+                    cornerRadius={2}
+                    isAnimationActive={!reduceMotion}
                     stroke="none"
                   >
-                    {shares.map((share) => (
-                      <Cell key={share.id} fill={share.color} />
+                    {shares.map((share, index) => (
+                      <Cell key={share.id} fill={inkFill(index)} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -169,7 +197,9 @@ export function DashboardCharts({
                       return (
                         <div className="rounded-md border border-border bg-raised px-3 py-2 text-sm shadow-card">
                           <p className="font-medium">{item.name}</p>
-                          <p className="mt-1 text-muted tabular-nums">{formatHoursMinutes(item.sec)}</p>
+                          <p className="mt-1 text-muted tabular-nums">
+                            {formatHoursMinutes(item.sec)}
+                          </p>
                         </div>
                       )
                     }}
@@ -184,9 +214,12 @@ export function DashboardCharts({
               </div>
             </div>
             <ul className="mt-2 space-y-2">
-              {shares.map((share) => (
+              {shares.map((share, index) => (
                 <li key={share.id} className="flex items-center gap-2 text-sm">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: share.color }} />
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: inkFill(index) }}
+                  />
                   <span className="min-w-0 flex-1 truncate">{share.name}</span>
                   <span className="text-muted tabular-nums">{formatHoursMinutes(share.sec)}</span>
                   <span className="w-10 text-right text-faint tabular-nums">
@@ -200,6 +233,19 @@ export function DashboardCharts({
       </section>
     </div>
   )
+}
+
+const INK_FILLS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'var(--chart-6)'
+]
+
+function inkFill(index: number): string {
+  return INK_FILLS[index % INK_FILLS.length] ?? 'var(--chart-1)'
 }
 
 function seriesFor(days: DashboardDay[], spaces: ChartSpace[]): ChartSpace[] {

@@ -14,7 +14,13 @@
         document.documentElement.classList.toggle('dark', dark)
         var accent = localStorage.getItem('goaltrail.accent')
         var density = localStorage.getItem('goaltrail.density')
-        if (accent === 'emerald' || accent === 'rose' || accent === 'amber' || accent === 'indigo') {
+        if (
+          accent === 'ink' ||
+          accent === 'emerald' ||
+          accent === 'rose' ||
+          accent === 'amber' ||
+          accent === 'indigo'
+        ) {
           document.documentElement.dataset.accent = accent
         }
         if (density === 'compact' || density === 'comfortable') {

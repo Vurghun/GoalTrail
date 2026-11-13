@@ -41,7 +41,7 @@ export function IdlePromptDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#17191f]/40 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
       <div
         role="dialog"
         aria-modal="true"
@@ -53,8 +53,8 @@ export function IdlePromptDialog({
           You stepped away
         </h2>
         <p id="idle-body" className="mt-2 text-sm leading-relaxed text-muted">
-          The timer paused after {length} away from the computer. Keep that time on {prompt.spaceName},
-          or leave it out?
+          The timer paused after {length} away from the computer. Keep that time on{' '}
+          {prompt.spaceName}, or leave it out?
         </p>
         {error ? (
           <p className="mt-3 text-sm text-danger" role="alert">

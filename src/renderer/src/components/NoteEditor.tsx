@@ -190,9 +190,7 @@ export function NoteEditor({ note, onMeta, onDeleted }: NoteEditorProps): React.
           </button>
         </div>
       </div>
-      <p
-        className={`text-xs ${saveState === 'error' ? 'text-danger' : 'text-muted'}`}
-      >
+      <p className={`text-xs ${saveState === 'error' ? 'text-danger' : 'text-muted'}`}>
         {saveLabel}
       </p>
       <div className="flex flex-wrap items-center gap-2">
@@ -320,9 +318,7 @@ function ToolbarButton({
       type="button"
       aria-pressed={active}
       className={`rounded-full px-3 py-1.5 text-sm ${
-        active
-          ? 'bg-accent text-white dark:text-[#14161c]'
-          : 'border border-border'
+        active ? 'bg-accent text-on-accent' : 'border border-border'
       }`}
       onClick={onClick}
     >

@@ -21,6 +21,7 @@ interface CommandPaletteProps {
   onSearchAll: (text: string) => void
   onNewSpace: () => void
   onDashboard: () => void
+  onMilestones: () => void
   onSettings: () => void
   onCycleTheme: () => void
   onFocus: () => void
@@ -68,7 +69,7 @@ export function CommandPalette(props: CommandPaletteProps): React.JSX.Element | 
   const groups = groupCommands(commands)
 
   return (
-    <div className="fixed inset-0 z-30 flex items-start justify-center bg-[#17191f]/40 px-4 pt-[12vh]">
+    <div className="fixed inset-0 z-30 flex items-start justify-center bg-black/40 px-4 pt-[12vh]">
       <div
         role="dialog"
         aria-modal="true"
@@ -103,7 +104,9 @@ export function CommandPalette(props: CommandPaletteProps): React.JSX.Element | 
               }
             }}
           />
-          <span className="rounded border border-border px-1.5 py-0.5 text-[11px] text-faint">Esc</span>
+          <span className="rounded border border-border px-1.5 py-0.5 text-[11px] text-faint">
+            Esc
+          </span>
         </div>
         <div className="max-h-80 overflow-y-auto p-2">
           {commands.length === 0 ? (
@@ -131,7 +134,9 @@ export function CommandPalette(props: CommandPaletteProps): React.JSX.Element | 
                       }}
                     >
                       <span className="min-w-0 flex-1 truncate">{command.label}</span>
-                      {command.hint ? <span className="text-[11px] text-faint">{command.hint}</span> : null}
+                      {command.hint ? (
+                        <span className="text-[11px] text-faint">{command.hint}</span>
+                      ) : null}
                     </button>
                   )
                 })}
@@ -153,11 +158,30 @@ function buildCommands(
   const query = text.trim().toLowerCase()
   const actions: Command[] = [
     { id: 'new-space', group: 'Actions', label: 'New space', hint: '', run: props.onNewSpace },
-    { id: 'dashboard', group: 'Actions', label: 'Go to dashboard', hint: 'G D', run: props.onDashboard },
+    {
+      id: 'dashboard',
+      group: 'Actions',
+      label: 'Go to dashboard',
+      hint: 'G D',
+      run: props.onDashboard
+    },
+    {
+      id: 'milestones',
+      group: 'Actions',
+      label: 'Go to milestones',
+      hint: 'G M',
+      run: props.onMilestones
+    },
     { id: 'settings', group: 'Actions', label: 'Go to settings', run: props.onSettings },
     { id: 'theme', group: 'Actions', label: 'Switch theme', run: props.onCycleTheme },
     { id: 'focus', group: 'Actions', label: 'Open focus mode', run: props.onFocus },
-    { id: 'shortcuts', group: 'Actions', label: 'Keyboard shortcuts', hint: '?', run: props.onShortcuts }
+    {
+      id: 'shortcuts',
+      group: 'Actions',
+      label: 'Keyboard shortcuts',
+      hint: '?',
+      run: props.onShortcuts
+    }
   ]
   const spaces: Command[] = props.spaces
     .filter((space) => space.status !== 'archived')
@@ -203,13 +227,17 @@ function buildCommands(
         ]
       : []
   const all = [...actions, ...starts, ...spaces, ...noteCommands, ...search]
-  const filtered = query.length === 0 ? all.slice(0, 8) : all.filter((command) => fuzzy(command.label, query))
+  const filtered =
+    query.length === 0 ? all.slice(0, 8) : all.filter((command) => fuzzy(command.label, query))
   if (query.length > 0 || recent.length === 0) return filtered
   const recentCommands = recent
     .map((id) => all.find((command) => command.id === id))
     .filter((command): command is Command => Boolean(command))
     .map((command) => ({ ...command, id: `recent:${command.id}`, group: 'Recent' }))
-  return [...recentCommands, ...filtered.filter((command) => !recent.includes(command.id))].slice(0, 10)
+  return [...recentCommands, ...filtered.filter((command) => !recent.includes(command.id))].slice(
+    0,
+    10
+  )
 }
 
 function groupCommands(commands: Command[]): { name: string; items: Command[] }[] {
@@ -240,7 +268,9 @@ function fuzzy(label: string, query: string): boolean {
 function readRecent(): string[] {
   try {
     const parsed = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as unknown
-    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string').slice(0, 5) : []
+    return Array.isArray(parsed)
+      ? parsed.filter((item) => typeof item === 'string').slice(0, 5)
+      : []
   } catch {
     return []
   }

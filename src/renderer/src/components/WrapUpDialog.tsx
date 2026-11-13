@@ -45,7 +45,7 @@ export function WrapUpDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-[#17191f]/40 p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) onDone()
       }}

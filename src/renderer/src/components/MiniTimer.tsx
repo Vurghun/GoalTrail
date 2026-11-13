@@ -43,8 +43,7 @@ export function MiniTimer(): React.JSX.Element {
   return (
     <div className="flex h-screen items-center gap-3 bg-surface px-3 text-text">
       <span
-        className="h-2.5 w-2.5 rounded-full"
-        style={{ background: space?.color ?? 'var(--accent)' }}
+        className={session?.running ? 'timer-dot' : 'h-1.5 w-1.5 rounded-full bg-text opacity-30'}
       />
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs text-muted">{space?.name ?? 'No timer'}</p>

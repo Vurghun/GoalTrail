@@ -36,7 +36,6 @@ export function TimePanel({ space, timer, children }: TimePanelProps): React.JSX
   const [editingId, setEditingId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Session | null>(null)
   const { settings } = useSettings()
-  const openHere = timer.session?.spaceId === space.id ? timer.session : null
   const totals = useMemo(
     () => summarizeSessions(sessions, timer.now, settings.weekStartsOn),
     [sessions, timer.now, settings.weekStartsOn]
@@ -81,103 +80,105 @@ export function TimePanel({ space, timer, children }: TimePanelProps): React.JSX
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-6">
-      <div className="rounded-lg border border-border bg-surface p-5 shadow-card">
-        <h2 className="text-base font-semibold tracking-tight">Time</h2>
-        <p className="mt-1 text-sm text-muted">
-          {openHere?.running
-            ? 'This timer keeps going if you open another space.'
-            : 'One timer runs at a time. Starting here stops any other timer.'}
-        </p>
-        {timer.error ? (
-          <p className="mt-3 text-sm text-danger" role="alert">
-            {timer.error}
-          </p>
-        ) : null}
-        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Total label="Today" value={totals.todaySec} />
-          <Total label="This week" value={totals.weekSec} />
-          <Total label="This month" value={totals.monthSec} />
-          <Total label="All time" value={totals.totalSec} />
-        </dl>
-      </div>
-      {children}
+        <div className="rounded-lg border border-border bg-surface p-5 shadow-card">
+          <h2 className="text-base font-semibold tracking-tight">Time</h2>
+          {timer.error ? (
+            <p className="mt-3 text-sm text-danger" role="alert">
+              {timer.error}
+            </p>
+          ) : null}
+          <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Total label="Today" value={totals.todaySec} />
+            <Total label="This week" value={totals.weekSec} />
+            <Total label="This month" value={totals.monthSec} />
+            <Total label="All time" value={totals.totalSec} />
+          </dl>
+        </div>
+        {children}
 
-      <div className="rounded-lg border border-border bg-surface p-5 shadow-card">
-        <h3 className="text-sm font-semibold">Add time</h3>
-        <SessionForm
-          key={`new-${space.id}`}
-          submitLabel="Add entry"
-          onSubmit={async (draft) => {
-            await saveDraft(draft)
-          }}
-        />
-        {error ? (
-          <p className="mt-3 text-sm text-danger" role="alert">
-            {error}
-          </p>
-        ) : null}
+        <div className="rounded-lg border border-border bg-surface p-5 shadow-card">
+          <h3 className="text-sm font-semibold">Add time</h3>
+          <SessionForm
+            key={`new-${space.id}`}
+            submitLabel="Add entry"
+            onSubmit={async (draft) => {
+              await saveDraft(draft)
+            }}
+          />
+          {error ? (
+            <p className="mt-3 text-sm text-danger" role="alert">
+              {error}
+            </p>
+          ) : null}
 
-        {history.length === 0 ? (
-          <p className="mt-4 text-sm text-muted">No saved sessions yet. Start the timer or add one.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-border">
-            {history.map((session) => (
-              <li key={session.id} className="py-3">
-                {editingId === session.id ? (
-                  <SessionForm
-                    initial={session}
-                    submitLabel="Save entry"
-                    onCancel={() => {
-                      setEditingId(null)
-                    }}
-                    onSubmit={async (draft) => {
-                      await saveDraft(draft, session.id)
-                    }}
-                  />
-                ) : (
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">
-                        {formatSessionDate(session.startedAt)}
-                        <span className="mx-2 text-faint">·</span>
-                        {formatHoursMinutes(session.durationSec)}
-                      </p>
-                      {session.note ? (
-                        <p className="mt-1 text-sm text-muted">
-                          {session.note}
+          {history.length === 0 ? (
+            <p className="mt-4 text-sm text-muted">
+              No saved sessions yet. Start the timer or add one.
+            </p>
+          ) : (
+            <ul className="mt-4 divide-y divide-border">
+              {history.map((session) => (
+                <li key={session.id} className="py-3">
+                  {editingId === session.id ? (
+                    <SessionForm
+                      initial={session}
+                      submitLabel="Save entry"
+                      onCancel={() => {
+                        setEditingId(null)
+                      }}
+                      onSubmit={async (draft) => {
+                        await saveDraft(draft, session.id)
+                      }}
+                    />
+                  ) : (
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">
+                          {formatSessionDate(session.startedAt)}
+                          <span className="mx-2 text-faint">·</span>
+                          {formatHoursMinutes(session.durationSec)}
                         </p>
-                      ) : null}
+                        {session.note ? (
+                          <p className="mt-1 text-sm text-muted">{session.note}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          className="text-sm text-muted hover:text-text"
+                          onClick={() => {
+                            setEditingId(session.id)
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="text-sm text-danger"
+                          onClick={() => {
+                            setPendingDelete(session)
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 gap-2">
-                      <button
-                        type="button"
-                        className="text-sm text-muted hover:text-text"
-                        onClick={() => {
-                          setEditingId(session.id)
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="text-sm text-danger"
-                        onClick={() => {
-                          setPendingDelete(session)
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
       <aside className="rounded-lg border border-border bg-surface p-5 shadow-card xl:sticky xl:top-4">
-        <ProgressRing ratio={ratio} color={space.color} label={target ? `${formatHoursMinutes(totals.totalSec)} / ${target}h` : formatHoursMinutes(totals.totalSec)} />
+        <ProgressRing
+          ratio={ratio}
+          label={
+            target
+              ? `${formatHoursMinutes(totals.totalSec)} / ${target}h`
+              : formatHoursMinutes(totals.totalSec)
+          }
+        />
         <p className="mt-4 text-center text-sm text-muted">
           {target ? 'Hours toward the target' : 'All tracked time in this space'}
         </p>
@@ -245,11 +246,9 @@ function PaceNote({
 
 function ProgressRing({
   ratio,
-  color,
   label
 }: {
   ratio: number | null
-  color: string
   label: string
 }): React.JSX.Element {
   const radius = 52
@@ -264,7 +263,7 @@ function ProgressRing({
           cy="60"
           r={radius}
           fill="none"
-          stroke={color}
+          stroke="var(--text)"
           strokeWidth="8"
           strokeLinecap="round"
           strokeDasharray={`${circumference * shown} ${circumference}`}
@@ -272,7 +271,9 @@ function ProgressRing({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
-        <span className="text-lg font-semibold tabular-nums">{ratio === null ? '—' : `${Math.round(ratio * 100)}%`}</span>
+        <span className="text-lg font-semibold tabular-nums">
+          {ratio === null ? '—' : `${Math.round(ratio * 100)}%`}
+        </span>
         <span className="text-xs text-muted">{label}</span>
       </div>
     </div>
@@ -408,7 +409,7 @@ function SessionForm({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:text-[#14161c]"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent disabled:opacity-50"
         >
           {submitLabel}
         </button>

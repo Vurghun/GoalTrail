@@ -22,17 +22,16 @@ export function TimerBar({
   onResume,
   onStop
 }: TimerBarProps): React.JSX.Element {
-  const color = space?.color ?? '#4f46e5'
   return (
-    <div
-      className={`flex items-center gap-2 rounded-full border border-border bg-surface py-1 pr-1 pl-1.5 ${
-        session.running ? 'timer-glow' : ''
-      }`}
-      style={{ ['--timer' as string]: color }}
-    >
-      <button type="button" className="flex min-w-0 items-center gap-2 text-left" onClick={onSelect}>
-        <IconTile icon={space?.icon ?? 'target'} color={color} size="sm" />
+    <div className="flex items-center gap-2 rounded-full border border-border bg-surface py-1 pr-1 pl-1.5">
+      <button
+        type="button"
+        className="flex min-w-0 items-center gap-2 text-left"
+        onClick={onSelect}
+      >
+        <IconTile icon={space?.icon ?? 'target'} color={space?.color ?? 'var(--text)'} size="sm" />
         <span className="max-w-28 truncate text-sm font-medium">{space?.name ?? 'Timer'}</span>
+        {session.running ? <span className="timer-dot" aria-hidden /> : null}
         <span className="text-sm font-semibold tabular-nums">{formatClock(elapsed)}</span>
       </button>
       {session.running ? (

@@ -3,13 +3,14 @@ const ROWS = [
   ['N', 'New note in the open space'],
   ['T', 'Start or stop the timer'],
   ['G then D', 'Go to the dashboard'],
+  ['G then M', 'Go to milestones'],
   ['?', 'Show these shortcuts'],
   ['Esc', 'Close Focus mode or a dialog']
 ]
 
 export function ShortcutsModal({ onClose }: { onClose: () => void }): React.JSX.Element {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#17191f]/45 p-4">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
       <div
         role="dialog"
         aria-modal="true"
@@ -24,13 +25,15 @@ export function ShortcutsModal({ onClose }: { onClose: () => void }): React.JSX.
           {ROWS.map(([keys, label]) => (
             <li key={keys} className="flex items-center justify-between gap-4 text-sm">
               <span>{label}</span>
-              <kbd className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-muted">{keys}</kbd>
+              <kbd className="rounded-md border border-border bg-bg px-2 py-1 text-xs text-muted">
+                {keys}
+              </kbd>
             </li>
           ))}
         </ul>
         <button
           type="button"
-          className="mt-5 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white dark:text-[#14161c]"
+          className="mt-5 rounded-md bg-accent px-3 py-2 text-sm font-medium text-on-accent"
           onClick={onClose}
         >
           Close
