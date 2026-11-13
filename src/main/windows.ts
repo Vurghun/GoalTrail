@@ -1,5 +1,6 @@
 import { BrowserWindow, shell } from 'electron'
 import { join } from 'path'
+import { appIcon } from './icon'
 import { isQuitting, isTrayReady } from './runtime'
 
 let mainWindow: BrowserWindow | null = null
@@ -8,6 +9,11 @@ let onHide: (() => void) | null = null
 
 const LIGHT = '#f7f7f7'
 const DARK = '#000000'
+
+function windowIcon(): ReturnType<typeof appIcon> | undefined {
+  const icon = appIcon()
+  return icon.isEmpty() ? undefined : icon
+}
 
 function rendererUrl(view?: 'mini'): string | null {
   const base = process.env['ELECTRON_RENDERER_URL']
@@ -53,6 +59,7 @@ export function createMainWindow(): BrowserWindow {
     show: false,
     autoHideMenuBar: true,
     title: 'GoalTrail',
+    icon: windowIcon(),
     backgroundColor: LIGHT,
     titleBarStyle: process.platform === 'win32' ? 'hidden' : 'default',
     titleBarOverlay:
@@ -133,6 +140,7 @@ export function openMiniTimer(): void {
     maximizable: false,
     skipTaskbar: true,
     show: false,
+    icon: windowIcon(),
     backgroundColor:
       mainWindow && !mainWindow.isDestroyed() ? mainWindow.getBackgroundColor() : LIGHT,
     webPreferences: {
