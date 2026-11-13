@@ -11,9 +11,10 @@ import type { DashboardSource } from './dashboard'
 import type { IdlePrompt } from './idle'
 import type { PomodoroComplete, PomodoroSnapshot, PomodoroStart } from './pomodoro'
 import type { AppSettings, SettingsSnapshot } from './settings'
-import type { Milestone, ProgressSource, SpaceGoals } from './progress'
+import type { Milestone, MilestoneDraft, ProgressSource, SpaceGoals } from './progress'
+import type { WeeklyReview } from './review'
 import type { Space, SpaceDraft } from './spaces'
-import type { Session, SessionDraft } from './time'
+import type { HistorySession, Session, SessionDraft } from './time'
 
 export const APP_NAME = 'GoalTrail'
 
@@ -30,6 +31,7 @@ export const IpcChannel = {
   timerStop: 'timer:stop',
   timerDiscardIdle: 'timer:discard-idle',
   sessionsList: 'sessions:list',
+  sessionsHistory: 'sessions:history',
   sessionsCreate: 'sessions:create',
   sessionsUpdate: 'sessions:update',
   sessionsDelete: 'sessions:delete',
@@ -52,6 +54,7 @@ export const IpcChannel = {
   spacesSetGoals: 'spaces:set-goals',
   progressGet: 'progress:get',
   dashboardGet: 'dashboard:get',
+  reviewGet: 'review:get',
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
   backupExport: 'backup:export',
@@ -111,6 +114,7 @@ export interface GoalTrailApi {
   discardIdle: (sessionId: string, idleSec: number) => Promise<Session | null>
   setSessionNote: (id: string, note: string) => Promise<Session>
   listSessions: (spaceId: string) => Promise<Session[]>
+  listSessionHistory: (spaceId: string | null) => Promise<HistorySession[]>
   createSession: (spaceId: string, draft: SessionDraft) => Promise<Session>
   updateSession: (id: string, draft: SessionDraft) => Promise<Session>
   deleteSession: (id: string) => Promise<void>
@@ -124,14 +128,15 @@ export interface GoalTrailApi {
   searchNotes: (query: NoteSearchQuery) => Promise<NoteSearchHit[]>
   listTags: () => Promise<string[]>
   listMilestones: (spaceId: string) => Promise<Milestone[]>
-  createMilestone: (spaceId: string, title: string) => Promise<Milestone>
-  updateMilestone: (id: string, title: string) => Promise<Milestone>
+  createMilestone: (spaceId: string, draft: MilestoneDraft) => Promise<Milestone>
+  updateMilestone: (id: string, draft: MilestoneDraft) => Promise<Milestone>
   setMilestoneDone: (id: string, done: boolean) => Promise<Milestone>
   deleteMilestone: (id: string) => Promise<void>
   reorderMilestones: (spaceId: string, ids: string[]) => Promise<Milestone[]>
   setSpaceGoals: (spaceId: string, goals: SpaceGoals) => Promise<Space>
   getProgress: (spaceId: string) => Promise<ProgressSource>
   getDashboard: () => Promise<DashboardSource>
+  getWeeklyReview: () => Promise<WeeklyReview>
   getSettings: () => Promise<SettingsSnapshot>
   updateSettings: (patch: Partial<AppSettings>) => Promise<SettingsSnapshot>
   exportBackup: () => Promise<{ canceled: boolean }>

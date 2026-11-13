@@ -2,7 +2,7 @@
 
 Visual system for the desktop app. Tokens live in `src/renderer/src/assets/main.css`. Tailwind v4 reads them through `@theme inline`, so utilities such as `bg-surface` and `text-muted` follow the active theme.
 
-The identity is monochrome. Light is the designed default: white surfaces, near-black text, gray for secondary copy, hairline dividers, and no drop shadows. Dark uses the same system inverted: black surfaces and near-white text. Color is not the product. A space can still carry a small color mark, and Settings can optionally tint buttons and the activity grid.
+The identity is monochrome and meant to read as finished, not as a wireframe. Light is the designed default: white surfaces, near-black text, gray for secondary copy, and hairline dividers. Black is used decisively for the selected navigation item, primary buttons, progress fills, and a short rule on the top of a stat card. Progress is a 6px track (`.meter`), not a hairline. Dark uses the same system inverted. Color is not the product. A space can still carry a small color mark, and Settings can optionally tint buttons and the activity grid.
 
 ## Color
 
@@ -74,16 +74,18 @@ The sidebar is 260px and collapses to an icon rail (`goaltrail.sidebar` in local
 
 ## Structure
 
-- Dashboard: today, the week, a short milestone summary, charts, spaces, recent notes.
-- Milestones: one list for every space. Open, done, and all. A space also has a Milestones tab with the same board.
-- Space: overview (time and details), milestones, notes, progress. Progress keeps the score, goals, heatmap, and activity, and links to milestones.
+- Dashboard: today, the week (opens the review), a short milestone summary, charts, spaces, recent notes.
+- Review: this week against last week, time by space, milestones finished, and one sentence drawn from that data.
+- Milestones: one list for every space. Open items with a date sort overdue first. A target date is optional. A space also has a Milestones tab with the same board.
+- History: saved sessions across the app, or filtered to one space. Notes and durations can be edited. A space home links here.
+- Space: overview is the home (today, this week, the next milestone, recent sessions). Name, description, icon, and color live behind Edit. Icons in that form are monochrome line icons. Milestones, notes, and progress stay as tabs. Progress keeps the score, goals, heatmap, and activity.
 - Focus mode: full-window timer, neutral field, quick note, optional Pomodoro ring.
 - Settings: Appearance, Timer, Data, and About.
 
 ## Signature UI
 
 - Command palette (Ctrl K): actions, spaces, timers, notes, and recent items. Arrow keys move, Enter runs.
-- Shortcuts: `N` new note, `T` start or stop, `G` then `D` dashboard, `G` then `M` milestones, `?` cheat sheet, Esc closes overlays.
+- Shortcuts: `N` new note, `T` start or stop, `G` then `D` dashboard, `G` then `R` weekly review, `G` then `M` milestones, `G` then `H` session history, `?` cheat sheet, Esc closes overlays.
 - Focus mode: full-window timer, quick note, optional Pomodoro ring.
 - Mini timer: a small always-on-top window opened from the header while a timer is running.
 - A short burst when a streak hits 3, 7, or 30, a space reaches its hour target, or today beats every earlier day in the chart.

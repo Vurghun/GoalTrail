@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Check, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
-import { parseMilestoneTitle, type Milestone } from '@shared/progress'
+import {
+  compareOpenMilestones,
+  describeDue,
+  parseMilestoneTitle,
+  type Milestone
+} from '@shared/progress'
 import type { Space } from '@shared/spaces'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { Button } from '@renderer/components/ui/Button'
@@ -34,6 +39,7 @@ export function MilestoneBoard({
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<MilestoneFilter>('open')
   const [title, setTitle] = useState('')
+  const [due, setDue] = useState('')
   const [targetId, setTargetId] = useState('')
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -95,9 +101,13 @@ export function MilestoneBoard({
     setError(null)
     try {
       const clean = parseMilestoneTitle(title)
-      const created = await window.api.createMilestone(spaceId, clean)
+      const created = await window.api.createMilestone(spaceId, {
+        title: clean,
+        targetDate: due || null
+      })
       patch(spaceId, (list) => [...list, created])
       setTitle('')
+      setDue('')
       if (filter === 'done') setFilter('open')
     } catch (addError: unknown) {
       setError(errorMessage(addError))
@@ -151,6 +161,23 @@ export function MilestoneBoard({
     }
   }
 
+  async function setDueDate(
+    spaceId: string,
+    milestone: Milestone,
+    targetDate: string | null
+  ): Promise<void> {
+    if (targetDate === milestone.targetDate) return
+    try {
+      const saved = await window.api.updateMilestone(milestone.id, {
+        title: milestone.title,
+        targetDate
+      })
+      patch(spaceId, (list) => list.map((item) => (item.id === saved.id ? saved : item)))
+    } catch (dateError: unknown) {
+      setError(errorMessage(dateError))
+    }
+  }
+
   async function commitTitle(spaceId: string, milestone: Milestone): Promise<void> {
     if (skipBlur.current) {
       skipBlur.current = false
@@ -160,7 +187,10 @@ export function MilestoneBoard({
     if (draft.trim() === milestone.title) return
     try {
       const clean = parseMilestoneTitle(draft)
-      const saved = await window.api.updateMilestone(milestone.id, clean)
+      const saved = await window.api.updateMilestone(milestone.id, {
+        title: clean,
+        targetDate: milestone.targetDate
+      })
       patch(spaceId, (list) => list.map((item) => (item.id === saved.id ? saved : item)))
     } catch (renameError: unknown) {
       setError(errorMessage(renameError))
@@ -201,13 +231,19 @@ export function MilestoneBoard({
         <FilterControl filter={filter} onFilter={setFilter} />
       </div>
 
-      {milestones.length > 0 ? (
-        <div className="mt-6 h-px bg-border" aria-hidden>
-          <div className="meter-fill h-px bg-text" style={{ width: `${percent}%` }} />
+      <div className="mt-8">
+        <div className="mb-2 flex items-baseline justify-between text-sm">
+          <span className="font-medium">
+            {milestones.length === 0 ? 'No milestones yet' : `${percent}% finished`}
+          </span>
+          <span className="text-muted tabular-nums">
+            {doneCount} of {milestones.length}
+          </span>
         </div>
-      ) : (
-        <div className="mt-6 h-px bg-border" />
-      )}
+        <div className="meter" aria-hidden>
+          <div className="meter-fill" style={{ width: `${percent}%` }} />
+        </div>
+      </div>
 
       {addable.length === 0 ? (
         variant === 'page' ? (
@@ -242,13 +278,22 @@ export function MilestoneBoard({
             </select>
           ) : null}
           <input
-            className={fieldClass}
+            className={`${fieldClass} min-w-[16rem] flex-1`}
             value={title}
-            placeholder="Finish the first chapter"
+            placeholder="Name the milestone"
             aria-label="New milestone"
             autoComplete="off"
             onChange={(event) => {
               setTitle(event.target.value)
+            }}
+          />
+          <input
+            className={`${fieldClass} w-auto`}
+            type="date"
+            value={due}
+            aria-label="Target date"
+            onChange={(event) => {
+              setDue(event.target.value)
             }}
           />
           <Button type="submit" disabled={adding || title.trim().length === 0}>
@@ -300,6 +345,9 @@ export function MilestoneBoard({
               void move(spaceId, id, direction)
             }}
             onDelete={setPendingDelete}
+            onSetDue={(spaceId, milestone, targetDate) => {
+              void setDueDate(spaceId, milestone, targetDate)
+            }}
           />
           {archivedSpaces.some(
             (space) => visibleMilestones(bySpace[space.id] ?? [], filter).length > 0
@@ -335,6 +383,9 @@ export function MilestoneBoard({
                   void move(spaceId, id, direction)
                 }}
                 onDelete={setPendingDelete}
+                onSetDue={(spaceId, milestone, targetDate) => {
+                  void setDueDate(spaceId, milestone, targetDate)
+                }}
               />
             </div>
           ) : null}
@@ -432,7 +483,9 @@ function visibleCount(
 }
 
 function visibleMilestones(milestones: Milestone[], filter: MilestoneFilter): Milestone[] {
-  if (filter === 'open') return milestones.filter((milestone) => !milestone.done)
+  if (filter === 'open') {
+    return milestones.filter((milestone) => !milestone.done).sort(compareOpenMilestones)
+  }
   if (filter === 'done') return milestones.filter((milestone) => milestone.done)
   return milestones
 }
@@ -452,6 +505,7 @@ interface GroupHandlers {
   onToggle: (spaceId: string, milestone: Milestone) => void
   onMove: (spaceId: string, id: string, direction: -1 | 1) => void
   onDelete: (milestone: Milestone) => void
+  onSetDue: (spaceId: string, milestone: Milestone, targetDate: string | null) => void
 }
 
 function SpaceGroups({
@@ -556,8 +610,8 @@ function SpaceGroups({
                         ) : (
                           <button
                             type="button"
-                            className={`min-w-0 flex-1 truncate text-left text-[15px] transition-colors duration-150 ${
-                              milestone.done ? 'text-muted line-through' : ''
+                            className={`min-w-0 flex-1 truncate text-left text-[15px] font-medium transition-colors duration-150 ${
+                              milestone.done ? 'text-muted line-through decoration-line' : ''
                             }`}
                             onClick={() => {
                               handlers.onEdit(milestone)
@@ -566,6 +620,12 @@ function SpaceGroups({
                             {milestone.title}
                           </button>
                         )}
+                        <DueControl
+                          milestone={milestone}
+                          onChange={(targetDate) => {
+                            handlers.onSetDue(space.id, milestone, targetDate)
+                          }}
+                        />
                         {handlers.filter === 'all' ? (
                           <span className="flex shrink-0 opacity-40 transition duration-150 group-focus-within:opacity-100 group-hover:opacity-100">
                             <IconButton
@@ -609,6 +669,60 @@ function SpaceGroups({
         )
       })}
     </>
+  )
+}
+
+function DueControl({
+  milestone,
+  onChange
+}: {
+  milestone: Milestone
+  onChange: (targetDate: string | null) => void
+}): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const due = describeDue(milestone.targetDate, milestone.done)
+  const finished =
+    milestone.done && milestone.doneAt
+      ? `Finished ${new Date(milestone.doneAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+      : null
+  const label = milestone.done ? (finished ?? 'Done') : due.label || 'Add date'
+  const tone =
+    due.tone === 'overdue'
+      ? 'text-danger'
+      : due.tone === 'today' || due.tone === 'soon'
+        ? 'font-medium text-text'
+        : 'text-muted'
+  if (open) {
+    return (
+      <input
+        type="date"
+        autoFocus
+        aria-label={`Target date for ${milestone.title}`}
+        className={`${fieldClass} w-auto py-1 text-xs`}
+        value={milestone.targetDate ?? ''}
+        onChange={(event) => {
+          onChange(event.target.value || null)
+        }}
+        onBlur={() => {
+          setOpen(false)
+        }}
+      />
+    )
+  }
+  return (
+    <button
+      type="button"
+      className={`shrink-0 text-xs tabular-nums ${milestone.done ? 'text-faint' : tone} ${
+        due.label || milestone.done
+          ? ''
+          : 'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100'
+      }`}
+      onClick={() => {
+        setOpen(true)
+      }}
+    >
+      {label}
+    </button>
   )
 }
 

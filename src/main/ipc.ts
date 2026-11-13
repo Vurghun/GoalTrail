@@ -12,6 +12,7 @@ import {
 import { exportData } from './export-data'
 import { closeMiniTimer, openMiniTimer, setWindowChrome } from './windows'
 import { getDashboard } from './dashboard'
+import { getWeeklyReview } from './review'
 import {
   createMilestone,
   deleteMilestone,
@@ -39,6 +40,7 @@ import {
   deleteSession,
   discardIdleTime,
   getTimer,
+  listSessionHistory,
   listSessions,
   setSessionNote,
   updateSession
@@ -98,6 +100,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.sessionsList, (_event, spaceId: unknown) =>
     listSessions(readId(spaceId, 'Space id'))
   )
+  ipcMain.handle(IpcChannel.sessionsHistory, (_event, spaceId: unknown) => {
+    if (spaceId === null) return listSessionHistory(null)
+    return listSessionHistory(readId(spaceId, 'Space id'))
+  })
   ipcMain.handle(IpcChannel.sessionsCreate, (_event, spaceId: unknown, input: unknown) => {
     return createSession(readId(spaceId, 'Space id'), input)
   })
@@ -168,6 +174,7 @@ export function registerIpcHandlers(): void {
     return getProgress(readId(spaceId, 'Space id'))
   })
   ipcMain.handle(IpcChannel.dashboardGet, () => getDashboard())
+  ipcMain.handle(IpcChannel.reviewGet, () => getWeeklyReview())
   ipcMain.handle(IpcChannel.settingsGet, () => getSettings())
   ipcMain.handle(IpcChannel.settingsUpdate, (_event, input: unknown) => updateSettings(input))
   ipcMain.handle(IpcChannel.backupExport, () => exportBackup())

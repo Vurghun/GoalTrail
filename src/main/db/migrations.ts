@@ -136,5 +136,15 @@ export const MIGRATIONS: Migration[] = [
         );
       `)
     }
+  },
+  {
+    version: 6,
+    up(db) {
+      db.exec(`
+        ALTER TABLE milestones ADD COLUMN target_date TEXT CHECK (
+          target_date IS NULL OR target_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        );
+      `)
+    }
   }
 ]

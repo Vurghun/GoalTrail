@@ -226,8 +226,8 @@ export function ProgressPanel({
 
 function Meter({ percent }: { percent: number }): React.JSX.Element {
   return (
-    <div className="mt-3 h-px overflow-hidden bg-border">
-      <div className="meter-fill h-px bg-text" style={{ width: `${percent}%` }} />
+    <div className="meter mt-3">
+      <div className="meter-fill" style={{ width: `${percent}%` }} />
     </div>
   )
 }

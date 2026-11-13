@@ -23,7 +23,9 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import { errorMessage } from '@renderer/lib/errors'
 import { pushToast } from '@renderer/lib/toast'
 import { DashboardPage } from '@renderer/pages/DashboardPage'
+import { HistoryPage } from '@renderer/pages/HistoryPage'
 import { MilestonesPage } from '@renderer/pages/MilestonesPage'
+import { ReviewPage } from '@renderer/pages/ReviewPage'
 import { SettingsPage } from '@renderer/pages/SettingsPage'
 import { SpaceEditor } from '@renderer/pages/SpaceEditor'
 import { SpacePage, type SpaceSection } from '@renderer/pages/SpacePage'
@@ -61,7 +63,10 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
   const [focusNoteId, setFocusNoteId] = useState<string | null>(null)
   const [noteReloadToken, setNoteReloadToken] = useState(0)
   const [shortcutError, setShortcutError] = useState<string | null>(null)
-  const [home, setHome] = useState<'dashboard' | 'milestones' | 'settings'>('dashboard')
+  const [home, setHome] = useState<'dashboard' | 'review' | 'milestones' | 'history' | 'settings'>(
+    'dashboard'
+  )
+  const [historySpaceId, setHistorySpaceId] = useState<string | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [focusOpen, setFocusOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -201,6 +206,27 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
         setSearchQuery('')
         setSearchTag(null)
       }
+
+      if (key === 'r' && chordRef.current === 'g') {
+        event.preventDefault()
+        chordRef.current = null
+        setHome('review')
+        setCreating(false)
+        setSelectedId(null)
+        setSearchQuery('')
+        setSearchTag(null)
+      }
+
+      if (key === 'h' && chordRef.current === 'g') {
+        event.preventDefault()
+        chordRef.current = null
+        setHome('history')
+        setHistorySpaceId(null)
+        setCreating(false)
+        setSelectedId(null)
+        setSearchQuery('')
+        setSearchTag(null)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => {
@@ -249,9 +275,11 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
           timingSpaceId={timer.session?.spaceId ?? null}
           timingRunning={timer.session?.running ?? false}
           showingDashboard={home === 'dashboard' && selectedId === null && !creating && !searching}
+          showingReview={home === 'review' && selectedId === null && !creating && !searching}
           showingMilestones={
             home === 'milestones' && selectedId === null && !creating && !searching
           }
+          showingHistory={home === 'history' && selectedId === null && !creating && !searching}
           showingSettings={home === 'settings' && selectedId === null && !creating && !searching}
           onShowDashboard={() => {
             setHome('dashboard')
@@ -260,8 +288,23 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
             setSearchQuery('')
             setSearchTag(null)
           }}
+          onShowReview={() => {
+            setHome('review')
+            setCreating(false)
+            setSelectedId(null)
+            setSearchQuery('')
+            setSearchTag(null)
+          }}
           onShowMilestones={() => {
             setHome('milestones')
+            setCreating(false)
+            setSelectedId(null)
+            setSearchQuery('')
+            setSearchTag(null)
+          }}
+          onShowHistory={() => {
+            setHome('history')
+            setHistorySpaceId(null)
             setCreating(false)
             setSelectedId(null)
             setSearchQuery('')
@@ -401,9 +444,20 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
                   onGoals={async (goals) => {
                     await setSpaceGoals(selected.id, goals)
                   }}
+                  onOpenHistory={() => {
+                    setHistorySpaceId(selected.id)
+                    setSelectedId(null)
+                    setHome('history')
+                    setSearchQuery('')
+                    setSearchTag(null)
+                  }}
                 />
               ) : home === 'settings' ? (
                 <SettingsPage />
+              ) : home === 'review' ? (
+                <ReviewPage />
+              ) : home === 'history' ? (
+                <HistoryPage spaces={spaces} spaceId={historySpaceId} onSpace={setHistorySpaceId} />
               ) : home === 'milestones' ? (
                 <MilestonesPage
                   spaces={spaces}
@@ -432,6 +486,13 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
                   }}
                   onOpenMilestones={() => {
                     setHome('milestones')
+                    setCreating(false)
+                    setSelectedId(null)
+                    setSearchQuery('')
+                    setSearchTag(null)
+                  }}
+                  onOpenReview={() => {
+                    setHome('review')
                     setCreating(false)
                     setSelectedId(null)
                     setSearchQuery('')
@@ -472,6 +533,23 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
         onMilestones={() => {
           setPaletteOpen(false)
           setHome('milestones')
+          setCreating(false)
+          setSelectedId(null)
+          setSearchQuery('')
+          setSearchTag(null)
+        }}
+        onReview={() => {
+          setPaletteOpen(false)
+          setHome('review')
+          setCreating(false)
+          setSelectedId(null)
+          setSearchQuery('')
+          setSearchTag(null)
+        }}
+        onHistory={() => {
+          setPaletteOpen(false)
+          setHome('history')
+          setHistorySpaceId(null)
           setCreating(false)
           setSelectedId(null)
           setSearchQuery('')

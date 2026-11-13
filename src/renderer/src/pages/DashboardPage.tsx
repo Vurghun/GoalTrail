@@ -30,6 +30,7 @@ interface DashboardPageProps {
   timer: TimerApi
   onOpenSpace: (spaceId: string, section?: SpaceSection) => void
   onOpenMilestones: () => void
+  onOpenReview: () => void
   onOpenNote: (spaceId: string, noteId: string) => void
   onCreateSpace: () => void
 }
@@ -40,6 +41,7 @@ export function DashboardPage({
   timer,
   onOpenSpace,
   onOpenMilestones,
+  onOpenReview,
   onOpenNote,
   onCreateSpace
 }: DashboardPageProps): React.JSX.Element {
@@ -191,8 +193,9 @@ export function DashboardPage({
               label="This week"
               seconds={view.weekSec}
               delta={stats.weekDelta}
+              onOpen={onOpenReview}
             />
-            <article className="rounded-lg border border-border bg-surface p-4 shadow-card">
+            <article className="rounded-lg border border-border border-t-2 border-t-text bg-surface p-4 shadow-card">
               <div className="flex items-center gap-2 text-[13px] font-medium text-muted">
                 <Flame size={16} />
                 Streak
@@ -254,7 +257,7 @@ export function DashboardPage({
           />
           <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
             <Heatmap days={source?.daySeconds ?? []} weekStartsOn={settings.weekStartsOn} />
-            <article className="rounded-lg border border-border bg-surface p-4 shadow-card">
+            <article className="rounded-lg border border-border border-t-2 border-t-text bg-surface p-4 shadow-card">
               <h2 className="text-base font-semibold tracking-tight">Insights</h2>
               <ul className="mt-3 space-y-2 text-sm text-muted">
                 {insightLines(source, spaces, timer.now).length === 0 ? (
@@ -280,7 +283,7 @@ export function DashboardPage({
                   const days = space ? daysUntil(space.targetDate) : null
                   return (
                     <li key={card.id}>
-                      <article className="flex h-full flex-col rounded-lg border border-border bg-surface p-4 transition duration-150 ease-out hover:border-line">
+                      <article className="flex h-full flex-col rounded-lg border border-border border-t-2 border-t-text bg-surface p-4 transition duration-150 ease-out hover:border-line">
                         <button
                           type="button"
                           className="flex items-start gap-3 text-left"
@@ -299,9 +302,9 @@ export function DashboardPage({
                           </span>
                         </button>
                         <div className="mt-4">
-                          <div className="h-px overflow-hidden bg-border">
+                          <div className="meter">
                             <div
-                              className="meter-fill h-px bg-text"
+                              className="meter-fill"
                               style={{ width: `${card.percent ?? 0}%` }}
                             />
                           </div>
@@ -526,11 +529,8 @@ function MilestoneStrip({
                   <span className="text-sm text-muted tabular-nums">
                     {space.milestoneDone} of {space.milestoneTotal}
                   </span>
-                  <span className="block h-px w-16 bg-border" aria-hidden>
-                    <span
-                      className="meter-fill block h-px bg-text"
-                      style={{ width: `${percent}%` }}
-                    />
+                  <span className="meter w-24" aria-hidden>
+                    <span className="meter-fill" style={{ width: `${percent}%` }} />
                   </span>
                 </button>
               </li>
@@ -546,17 +546,24 @@ function StatCard({
   icon: Icon,
   label,
   seconds,
-  delta
+  delta,
+  onOpen
 }: {
   icon: typeof Clock
   label: string
   seconds: number
   delta: number | null
+  onOpen?: () => void
 }): React.JSX.Element {
   const up = delta !== null && delta > 0
   const down = delta !== null && delta < 0
   return (
-    <article className="rounded-lg border border-border bg-surface p-4 shadow-card">
+    <article
+      className={`rounded-lg border border-border border-t-2 border-t-text bg-surface p-4 shadow-card ${
+        onOpen ? 'cursor-pointer transition duration-150 hover:border-line' : ''
+      }`}
+      onClick={onOpen}
+    >
       <div className="flex items-center gap-2 text-[13px] font-medium text-muted">
         <Icon size={16} strokeWidth={1.75} />
         {label}

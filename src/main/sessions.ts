@@ -5,6 +5,7 @@ import {
   elapsedSec,
   isoFromLocalDate,
   parseSessionDraft,
+  type HistorySession,
   type Session
 } from '@shared/time'
 import { getDatabase } from './db'
@@ -32,6 +33,30 @@ export function listSessions(spaceId: string): Session[] {
     )
     .all(spaceId)
   return rows.map(mapSession)
+}
+
+export function listSessionHistory(spaceId: string | null): HistorySession[] {
+  if (spaceId) assertSpaceExists(spaceId)
+  const rows = getDatabase()
+    .prepare<
+      [string | null, string | null],
+      SessionRow & { space_name: string; space_icon: string; space_color: string }
+    >(
+      `SELECT s.id, s.space_id, s.started_at, s.ended_at, s.duration_sec, s.resumed_at, s.note, s.is_open,
+              sp.name AS space_name, sp.icon AS space_icon, sp.color AS space_color
+       FROM sessions s
+       JOIN spaces sp ON sp.id = s.space_id
+       WHERE s.is_open = 0 AND (? IS NULL OR s.space_id = ?)
+       ORDER BY s.started_at DESC
+       LIMIT 300`
+    )
+    .all(spaceId, spaceId)
+  return rows.map((row) => ({
+    ...mapSession(row),
+    spaceName: row.space_name,
+    spaceIcon: row.space_icon,
+    spaceColor: row.space_color
+  }))
 }
 
 export function getTimer(): Session | null {

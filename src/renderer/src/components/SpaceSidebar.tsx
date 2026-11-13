@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { GripVertical, LayoutDashboard, ListChecks, PanelLeft, Plus, Settings } from 'lucide-react'
+import {
+  CalendarRange,
+  GripVertical,
+  History,
+  LayoutDashboard,
+  ListChecks,
+  PanelLeft,
+  Plus,
+  Settings
+} from 'lucide-react'
 import type { Space } from '@shared/spaces'
 import { IconTile } from '@renderer/components/ui/IconTile'
 
@@ -16,10 +25,14 @@ interface SpaceSidebarProps {
   timingSpaceId: string | null
   timingRunning: boolean
   showingDashboard: boolean
+  showingReview: boolean
   showingMilestones: boolean
+  showingHistory: boolean
   showingSettings: boolean
   onShowDashboard: () => void
+  onShowReview: () => void
   onShowMilestones: () => void
+  onShowHistory: () => void
   onShowSettings: () => void
 }
 
@@ -58,11 +71,25 @@ export function SpaceSidebar(props: SpaceSidebarProps): React.JSX.Element {
           onClick={props.onShowDashboard}
         />
         <NavButton
+          icon={CalendarRange}
+          label="Review"
+          collapsed={collapsed}
+          selected={props.showingReview}
+          onClick={props.onShowReview}
+        />
+        <NavButton
           icon={ListChecks}
           label="Milestones"
           collapsed={collapsed}
           selected={props.showingMilestones}
           onClick={props.onShowMilestones}
+        />
+        <NavButton
+          icon={History}
+          label="History"
+          collapsed={collapsed}
+          selected={props.showingHistory}
+          onClick={props.onShowHistory}
         />
       </nav>
       <div
@@ -150,7 +177,7 @@ function NavButton({
       title={label}
       className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition duration-150 ease-out ${
         selected
-          ? 'bg-accent-soft font-medium text-text'
+          ? 'bg-text font-medium text-surface'
           : 'text-muted hover:bg-accent-soft hover:text-text'
       } ${collapsed ? 'justify-center px-0' : ''}`}
       onClick={onClick}

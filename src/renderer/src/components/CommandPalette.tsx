@@ -22,6 +22,8 @@ interface CommandPaletteProps {
   onNewSpace: () => void
   onDashboard: () => void
   onMilestones: () => void
+  onReview: () => void
+  onHistory: () => void
   onSettings: () => void
   onCycleTheme: () => void
   onFocus: () => void
@@ -166,11 +168,25 @@ function buildCommands(
       run: props.onDashboard
     },
     {
+      id: 'review',
+      group: 'Actions',
+      label: 'Go to weekly review',
+      hint: 'G R',
+      run: props.onReview
+    },
+    {
       id: 'milestones',
       group: 'Actions',
       label: 'Go to milestones',
       hint: 'G M',
       run: props.onMilestones
+    },
+    {
+      id: 'history',
+      group: 'Actions',
+      label: 'Go to session history',
+      hint: 'G H',
+      run: props.onHistory
     },
     { id: 'settings', group: 'Actions', label: 'Go to settings', run: props.onSettings },
     { id: 'theme', group: 'Actions', label: 'Switch theme', run: props.onCycleTheme },

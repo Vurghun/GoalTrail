@@ -55,7 +55,7 @@ export function emptySpaceDraft(): SpaceDraft {
   return {
     name: '',
     description: '',
-    color: SPACE_COLORS[0],
+    color: '#111111',
     icon: 'target',
     status: 'active',
     targetHours: null,
