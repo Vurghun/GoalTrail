@@ -58,6 +58,7 @@ const api: GoalTrailApi = {
   importBackup: () => invoke<{ canceled: boolean }>(IpcChannel.backupImport),
   getBackupStatus: () => invoke<BackupStatus>(IpcChannel.backupStatus),
   showBackupsFolder: () => invoke<void>(IpcChannel.backupShowFolder),
+  restoreAutomaticBackup: (name) => invoke<void>(IpcChannel.backupRestore, name),
   startPomodoro: (input) => invoke<PomodoroSnapshot>(IpcChannel.pomodoroStart, input),
   stopPomodoro: () => invoke<void>(IpcChannel.pomodoroStop),
   getPomodoro: () => invoke<PomodoroSnapshot | null>(IpcChannel.pomodoroGet),

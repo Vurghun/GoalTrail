@@ -129,7 +129,7 @@ export function isoFromLocalDate(date: string): string {
   return new Date(year, month - 1, day, 12, 0, 0, 0).toISOString()
 }
 
-function startOfWeek(date: Date, weekStartsOn: number): Date {
+export function startOfWeek(date: Date, weekStartsOn: number): Date {
   const start = new Date(date.getFullYear(), date.getMonth(), date.getDate())
   const day = start.getDay()
   const daysSinceWeekStart = (day - weekStartsOn + 7) % 7

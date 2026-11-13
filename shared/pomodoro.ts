@@ -1,8 +1,14 @@
+export const POMODORO_CYCLE_MAX = 99
+
+export type PomodoroPhase = 'focus' | 'break' | 'offer-break' | 'offer-resume'
+
 export interface PomodoroSnapshot {
-  phase: 'focus' | 'break'
+  phase: PomodoroPhase
   remainingSec: number
   endsAt: number | null
   spaceName: string
+  cycle: number
+  durationSec: number
 }
 
 export interface PomodoroStart {
@@ -10,6 +16,7 @@ export interface PomodoroStart {
   durationSec: number
   spaceName: string
   ticking: boolean
+  cycle: number
 }
 
 export interface PomodoroComplete {
@@ -35,11 +42,20 @@ export function parsePomodoroStart(input: unknown): PomodoroStart {
     throw new Error('Pomodoro space is invalid.')
   }
   if (typeof input.ticking !== 'boolean') throw new Error('Pomodoro state is invalid.')
+  if (
+    typeof input.cycle !== 'number' ||
+    !Number.isInteger(input.cycle) ||
+    input.cycle < 1 ||
+    input.cycle > POMODORO_CYCLE_MAX
+  ) {
+    throw new Error('Pomodoro cycle is invalid.')
+  }
   return {
     phase: input.phase,
     durationSec: input.durationSec,
     spaceName,
-    ticking: input.ticking
+    ticking: input.ticking,
+    cycle: input.cycle
   }
 }
 

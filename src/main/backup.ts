@@ -10,7 +10,7 @@ import {
   statSync,
   writeFileSync
 } from 'fs'
-import { join } from 'path'
+import { dirname, join, resolve } from 'path'
 import {
   AUTO_BACKUP_INTERVAL_MS,
   AUTO_BACKUP_KEEP,
@@ -92,7 +92,12 @@ export function getBackupStatus(): BackupStatus {
   return {
     lastBackupAt: newest ? new Date(newest.mtimeMs).toISOString() : null,
     directory,
-    kept: AUTO_BACKUP_KEEP
+    kept: AUTO_BACKUP_KEEP,
+    backups: files.map((file) => ({
+      name: file.name,
+      modifiedAt: new Date(file.mtimeMs).toISOString(),
+      bytes: file.bytes
+    }))
   }
 }
 
@@ -131,16 +136,29 @@ export function runAutomaticBackupIfDue(): boolean {
   return true
 }
 
-function listAutomaticBackups(directory: string): { name: string; mtimeMs: number }[] {
+function listAutomaticBackups(directory: string): { name: string; mtimeMs: number; bytes: number }[] {
   if (!existsSync(directory)) return []
-  const files: { name: string; mtimeMs: number }[] = []
+  const files: { name: string; mtimeMs: number; bytes: number }[] = []
   for (const name of readdirSync(directory)) {
-    if (!AUTO_BACKUP_FILE.test(name)) continue
-    const mtimeMs = statSync(join(directory, name)).mtimeMs
-    files.push({ name, mtimeMs })
+    if (!isAutomaticBackupName(name)) continue
+    const stat = statSync(join(directory, name))
+    files.push({ name, mtimeMs: stat.mtimeMs, bytes: stat.size })
   }
   files.sort((a, b) => b.mtimeMs - a.mtimeMs || b.name.localeCompare(a.name))
   return files
+}
+
+export function restoreAutomaticBackup(name: string): void {
+  if (!isAutomaticBackupName(name)) throw new Error('Choose a backup from the list.')
+  const directory = resolve(backupsDirectory())
+  const filePath = resolve(directory, name)
+  if (dirname(filePath) !== directory) throw new Error('Choose a backup from the list.')
+  if (!existsSync(filePath)) throw new Error('That backup is no longer there.')
+  restoreBackup(filePath)
+}
+
+function isAutomaticBackupName(name: string): boolean {
+  return AUTO_BACKUP_FILE.test(name)
 }
 
 function uniqueBackupName(directory: string): string {

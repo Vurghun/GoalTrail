@@ -115,7 +115,7 @@ export function ProgressPanel({ space, timer, onGoals }: ProgressPanelProps): Re
         <>
           {source ? (
             <div className="space-y-3">
-              <Heatmap days={source.daySeconds} color={space.color} />
+              <Heatmap days={source.daySeconds} color={space.color} weekStartsOn={settings.weekStartsOn} />
               <PaceLine space={space} source={source} loggedSec={view.loggedSec} now={timer.now} />
             </div>
           ) : null}

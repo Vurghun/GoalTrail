@@ -1,15 +1,22 @@
 import { IpcEvent } from '@shared/ipc'
-import type { PomodoroComplete, PomodoroSnapshot, PomodoroStart } from '@shared/pomodoro'
+import type {
+  PomodoroComplete,
+  PomodoroPhase,
+  PomodoroSnapshot,
+  PomodoroStart
+} from '@shared/pomodoro'
 import { notify } from './notify'
 import { isQuitting, timerMutated } from './runtime'
 import { pauseTimer } from './sessions'
 import { sendToMain } from './windows'
 
 interface PomodoroState {
-  phase: 'focus' | 'break'
+  phase: PomodoroPhase
   remainingSec: number
   endsAt: number | null
   spaceName: string
+  cycle: number
+  durationSec: number
 }
 
 let state: PomodoroState | null = null
@@ -20,7 +27,9 @@ export function startPomodoro(input: PomodoroStart): PomodoroSnapshot {
     phase: input.phase,
     remainingSec: input.durationSec,
     endsAt: input.ticking ? Date.now() + input.durationSec * 1000 : null,
-    spaceName: input.spaceName
+    spaceName: input.spaceName,
+    cycle: input.cycle,
+    durationSec: input.durationSec
   }
   schedule()
   return snapshot()
@@ -71,9 +80,17 @@ function schedule(): void {
 
 function complete(): void {
   if (!state || isQuitting()) return
+  if (state.phase !== 'focus' && state.phase !== 'break') return
   const phase = state.phase
   const spaceName = state.spaceName
-  state = null
+  state = {
+    phase: phase === 'focus' ? 'offer-break' : 'offer-resume',
+    remainingSec: 0,
+    endsAt: null,
+    spaceName,
+    cycle: state.cycle,
+    durationSec: state.durationSec
+  }
   clearSchedule()
   if (phase === 'focus') {
     try {
@@ -95,7 +112,9 @@ function snapshot(): PomodoroSnapshot {
     phase: state.phase,
     remainingSec: secondsLeft(state),
     endsAt: state.endsAt,
-    spaceName: state.spaceName
+    spaceName: state.spaceName,
+    cycle: state.cycle,
+    durationSec: state.durationSec
   }
 }
 
