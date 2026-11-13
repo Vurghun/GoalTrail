@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
 import { basename, join, resolve, sep } from 'path'
 import { app, protocol } from 'electron'
 import {
@@ -40,6 +40,17 @@ export function saveNoteImageFile(bytes: Uint8Array, mime: string): string {
   mkdirSync(noteImagesDir(), { recursive: true })
   writeFileSync(resolveImagePath(relativePath), bytes)
   return relativePath
+}
+
+export function removeUnreferencedImageFiles(referenced: Set<string>): void {
+  const directory = noteImagesDir()
+  if (!existsSync(directory)) return
+  for (const name of readdirSync(directory)) {
+    if (!FILE_NAME.test(name)) continue
+    const relativePath = `images/${name}`
+    if (referenced.has(relativePath)) continue
+    deleteNoteImageFile(relativePath)
+  }
 }
 
 export function deleteNoteImageFile(relativePath: string): void {

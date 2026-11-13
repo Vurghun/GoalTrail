@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import {
   ACTIVITY_LIMIT,
-  parseMilestoneTitle,
+  parseMilestoneDraft,
   type ActivityItem,
   type Milestone,
   type ProgressSource
@@ -16,14 +16,17 @@ interface MilestoneRow {
   title: string
   done: number
   done_at: string | null
+  target_date: string | null
   sort_order: number
 }
+
+const MILESTONE_COLUMNS = 'id, space_id, title, done, done_at, target_date, sort_order'
 
 export function listMilestones(spaceId: string): Milestone[] {
   requireSpace(spaceId)
   const rows = getDatabase()
     .prepare<[string], MilestoneRow>(
-      `SELECT id, space_id, title, done, done_at, sort_order
+      `SELECT ${MILESTONE_COLUMNS}
        FROM milestones
        WHERE space_id = ?
        ORDER BY sort_order ASC, rowid ASC`
@@ -32,9 +35,9 @@ export function listMilestones(spaceId: string): Milestone[] {
   return rows.map(mapMilestone)
 }
 
-export function createMilestone(spaceId: string, title: unknown): Milestone {
+export function createMilestone(spaceId: string, input: unknown): Milestone {
   requireSpace(spaceId)
-  const cleanTitle = parseMilestoneTitle(title)
+  const draft = parseMilestoneDraft(input)
   const db = getDatabase()
   const maxRow = db
     .prepare<[string], { max_order: number }>(
@@ -43,16 +46,18 @@ export function createMilestone(spaceId: string, title: unknown): Milestone {
     .get(spaceId)
   const id = randomUUID()
   db.prepare(
-    `INSERT INTO milestones (id, space_id, title, done, done_at, sort_order)
-     VALUES (?, ?, ?, 0, NULL, ?)`
-  ).run(id, spaceId, cleanTitle, (maxRow?.max_order ?? -1) + 1)
+    `INSERT INTO milestones (id, space_id, title, done, done_at, target_date, sort_order)
+     VALUES (?, ?, ?, 0, NULL, ?, ?)`
+  ).run(id, spaceId, draft.title, draft.targetDate, (maxRow?.max_order ?? -1) + 1)
   return requireMilestone(id)
 }
 
-export function updateMilestone(id: string, title: unknown): Milestone {
+export function updateMilestone(id: string, input: unknown): Milestone {
   requireMilestone(id)
-  const cleanTitle = parseMilestoneTitle(title)
-  getDatabase().prepare('UPDATE milestones SET title = ? WHERE id = ?').run(cleanTitle, id)
+  const draft = parseMilestoneDraft(input)
+  getDatabase()
+    .prepare('UPDATE milestones SET title = ?, target_date = ? WHERE id = ?')
+    .run(draft.title, draft.targetDate, id)
   return requireMilestone(id)
 }
 
@@ -202,9 +207,7 @@ function requireSpaceRow(spaceId: string): {
 
 function requireMilestone(id: string): Milestone {
   const row = getDatabase()
-    .prepare<[string], MilestoneRow>(
-      'SELECT id, space_id, title, done, done_at, sort_order FROM milestones WHERE id = ?'
-    )
+    .prepare<[string], MilestoneRow>(`SELECT ${MILESTONE_COLUMNS} FROM milestones WHERE id = ?`)
     .get(id)
   if (!row) throw new Error('Milestone was not found.')
   return mapMilestone(row)
@@ -217,6 +220,7 @@ function mapMilestone(row: MilestoneRow): Milestone {
     title: row.title,
     done: row.done === 1,
     doneAt: row.done_at,
+    targetDate: row.target_date,
     sortOrder: row.sort_order
   }
 }

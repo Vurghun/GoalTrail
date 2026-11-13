@@ -11,7 +11,20 @@ export interface Milestone {
   title: string
   done: boolean
   doneAt: string | null
+  targetDate: string | null
   sortOrder: number
+}
+
+export interface MilestoneDraft {
+  title: string
+  targetDate: string | null
+}
+
+export type DueTone = 'overdue' | 'today' | 'soon' | 'later' | 'none'
+
+export interface DueDescription {
+  label: string
+  tone: DueTone
 }
 
 export interface SpaceGoals {
@@ -57,6 +70,57 @@ export interface ProgressView {
   weeklyPercent: number | null
   streakDays: number
   bestStreakDays: number
+}
+
+export function parseMilestoneDraft(input: unknown): MilestoneDraft {
+  if (typeof input === 'string') return { title: parseMilestoneTitle(input), targetDate: null }
+  if (!isRecord(input)) throw new Error('Milestone is invalid.')
+  return {
+    title: parseMilestoneTitle(input.title),
+    targetDate: parseOptionalDate(input.targetDate)
+  }
+}
+
+export function describeDue(
+  targetDate: string | null,
+  done: boolean,
+  now = new Date()
+): DueDescription {
+  if (!targetDate) return { label: '', tone: 'none' }
+  const today = localDateKey(now)
+  const formatted = formatDueDate(targetDate)
+  if (done) return { label: formatted, tone: 'later' }
+  if (targetDate < today) {
+    const days = daySpan(targetDate, today)
+    return { label: days === 1 ? 'Overdue · 1 day' : `Overdue · ${days} days`, tone: 'overdue' }
+  }
+  if (targetDate === today) return { label: 'Due today', tone: 'today' }
+  const days = daySpan(today, targetDate)
+  if (days === 1) return { label: 'Due tomorrow', tone: 'soon' }
+  if (days <= 7) return { label: `Due in ${days} days`, tone: 'soon' }
+  return { label: formatted, tone: 'later' }
+}
+
+export function formatDueDate(date: string): string {
+  const [year, month, day] = date.split('-').map(Number)
+  return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+export function compareOpenMilestones(a: Milestone, b: Milestone, now = new Date()): number {
+  const today = localDateKey(now)
+  const rank = (milestone: Milestone): number => {
+    if (!milestone.targetDate) return 2
+    return milestone.targetDate < today ? 0 : 1
+  }
+  const difference = rank(a) - rank(b)
+  if (difference !== 0) return difference
+  if (a.targetDate && b.targetDate && a.targetDate !== b.targetDate) {
+    return a.targetDate < b.targetDate ? -1 : 1
+  }
+  return a.sortOrder - b.sortOrder
 }
 
 export function parseMilestoneTitle(input: unknown): string {
@@ -198,9 +262,31 @@ function ratio(actualSec: number, goalMin: number | null): number | null {
 }
 
 function daysBetween(fromKey: string, toKey: string): number {
+  return daySpan(fromKey, toKey)
+}
+
+function daySpan(fromKey: string, toKey: string): number {
   const from = dateFromKey(fromKey)
   const to = dateFromKey(toKey)
   return Math.round((to.getTime() - from.getTime()) / 86_400_000)
+}
+
+function parseOptionalDate(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value !== 'string' || !isRealIsoDate(value)) {
+    throw new Error('Choose a real date.')
+  }
+  return value
+}
+
+function isRealIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  if (year === undefined || month === undefined || day === undefined) return false
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  )
 }
 
 function startOfWeek(date: Date, weekStartsOn: number): Date {

@@ -294,7 +294,7 @@ function restoreBackup(filePath: string): void {
     insertRows('note_tags', ['note_id', 'tag_id'], backup.noteTags)
     insertRows(
       'milestones',
-      ['id', 'space_id', 'title', 'done', 'done_at', 'sort_order'],
+      ['id', 'space_id', 'title', 'done', 'done_at', 'target_date', 'sort_order'],
       backup.milestones
     )
     insertRows(
@@ -372,6 +372,10 @@ function parseBackup(input: unknown): BackupData {
     requireMember(note.space_id, spaceIds, 'A note points at a missing space.')
   for (const milestone of milestones) {
     requireMember(milestone.space_id, spaceIds, 'A milestone points at a missing space.')
+    const date = milestone.target_date
+    if (date != null && (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date))) {
+      throw new Error('This backup has an invalid milestone date.')
+    }
   }
   for (const image of noteImages) {
     requireMember(image.note_id, noteIds, 'An image points at a missing note.')

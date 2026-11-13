@@ -1,16 +1,11 @@
 import { useEffect, useState } from 'react'
-import {
-  assembleProgress,
-  parseMilestoneTitle,
-  parseSpaceGoals,
-  type Milestone,
-  type ProgressSource
-} from '@shared/progress'
+import { ChevronRight } from 'lucide-react'
+import { assembleProgress, parseSpaceGoals, type ProgressSource } from '@shared/progress'
 import type { Space } from '@shared/spaces'
 import { goalInsight, paceWindow, secondsInWindow } from '@shared/insights'
 import { formatHoursMinutes, formatSessionDate, localDateKey } from '@shared/time'
 import { Heatmap } from '@renderer/components/Heatmap'
-import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
+import { Button } from '@renderer/components/ui/Button'
 import { fieldClass } from '@renderer/components/ui/styles'
 import { useSessionsChanged } from '@renderer/hooks/useSessionsChanged'
 import { useSettings } from '@renderer/hooks/useSettings'
@@ -23,21 +18,24 @@ interface ProgressPanelProps {
   space: Space
   timer: TimerApi
   onGoals: (dailyGoalMin: number | null, weeklyGoalMin: number | null) => Promise<void>
+  onOpenMilestones: () => void
 }
 
-export function ProgressPanel({ space, timer, onGoals }: ProgressPanelProps): React.JSX.Element {
+export function ProgressPanel({
+  space,
+  timer,
+  onGoals,
+  onOpenMilestones
+}: ProgressPanelProps): React.JSX.Element {
   const { settings } = useSettings()
   const [source, setSource] = useState<ProgressSource | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
-  const [title, setTitle] = useState('')
   const [daily, setDaily] = useState(space.dailyGoalMin === null ? '' : String(space.dailyGoalMin))
   const [weekly, setWeekly] = useState(
     space.weeklyGoalMin === null ? '' : String(space.weeklyGoalMin)
   )
-  const [pendingDelete, setPendingDelete] = useState<Milestone | null>(null)
-
   useSessionsChanged(() => {
     setReloadToken((value) => value + 1)
   })
@@ -68,29 +66,6 @@ export function ProgressPanel({ space, timer, onGoals }: ProgressPanelProps): Re
     setReloadToken((value) => value + 1)
   }
 
-  async function addMilestone(): Promise<void> {
-    const clean = parseMilestoneTitle(title)
-    await window.api.createMilestone(space.id, clean)
-    setTitle('')
-    reload()
-  }
-
-  async function moveMilestone(id: string, direction: -1 | 1): Promise<void> {
-    if (!source) return
-    const ordered = source.milestones.slice()
-    const index = ordered.findIndex((milestone) => milestone.id === id)
-    const target = index + direction
-    if (index < 0 || target < 0 || target >= ordered.length) return
-    const [moved] = ordered.splice(index, 1)
-    if (!moved) return
-    ordered.splice(target, 0, moved)
-    await window.api.reorderMilestones(
-      space.id,
-      ordered.map((milestone) => milestone.id)
-    )
-    reload()
-  }
-
   async function saveGoals(): Promise<void> {
     const goals = parseSpaceGoals({
       dailyGoalMin: minutesOrEmpty(daily, 'Daily goal'),
@@ -101,13 +76,10 @@ export function ProgressPanel({ space, timer, onGoals }: ProgressPanelProps): Re
   }
 
   return (
-    <section className="flex flex-col gap-6 py-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">Progress</h2>
-        <p className="text-sm text-muted">
-          The score averages finished milestones and hours toward the target.
-        </p>
-      </div>
+    <section className="flex flex-col gap-6 py-8">
+      <p className="text-sm text-muted">
+        The score averages finished milestones and hours toward the target.
+      </p>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
       {loading && !view ? (
         <p className="text-sm text-muted">Loading progress…</p>
@@ -115,7 +87,7 @@ export function ProgressPanel({ space, timer, onGoals }: ProgressPanelProps): Re
         <>
           {source ? (
             <div className="space-y-3">
-              <Heatmap days={source.daySeconds} color={space.color} weekStartsOn={settings.weekStartsOn} />
+              <Heatmap days={source.daySeconds} weekStartsOn={settings.weekStartsOn} />
               <PaceLine space={space} source={source} loggedSec={view.loggedSec} now={timer.now} />
             </div>
           ) : null}
@@ -145,15 +117,7 @@ export function ProgressPanel({ space, timer, onGoals }: ProgressPanelProps): Re
             </article>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Stat
-              label="Milestones"
-              value={
-                view.milestoneTotal === 0
-                  ? 'None yet'
-                  : `${view.milestoneDone} of ${view.milestoneTotal}`
-              }
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
             <Stat
               label="Hours"
               value={
@@ -216,113 +180,23 @@ export function ProgressPanel({ space, timer, onGoals }: ProgressPanelProps): Re
                   }}
                 />
               </label>
-              <button
-                type="submit"
-                className="rounded-md bg-accent px-4 py-2 text-sm text-white dark:text-[#14161c]"
-              >
-                Save goals
-              </button>
+              <Button type="submit">Save goals</Button>
             </form>
           </div>
 
-          <div>
-            <h3 className="text-sm font-medium">Milestones</h3>
-            <form
-              className="mt-3 flex gap-2"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void addMilestone().catch((addError: unknown) => {
-                  setError(errorMessage(addError))
-                })
-              }}
-            >
-              <input
-                className={fieldClass}
-                value={title}
-                placeholder="Finish the pointers chapter"
-                aria-label="New milestone"
-                onChange={(event) => {
-                  setTitle(event.target.value)
-                }}
-              />
-              <button
-                type="submit"
-                className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm text-white dark:text-[#14161c]"
-              >
-                Add
-              </button>
-            </form>
-            {source && source.milestones.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">
-                Add the steps that mean this space is done.
-              </p>
-            ) : (
-              <ul className="mt-3 flex flex-col gap-2">
-                {source?.milestones.map((milestone, index) => (
-                  <li
-                    key={milestone.id}
-                    className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={milestone.done}
-                      aria-label={`Mark ${milestone.title} done`}
-                      onChange={() => {
-                        void window.api
-                          .setMilestoneDone(milestone.id, !milestone.done)
-                          .then(() => {
-                            reload()
-                          })
-                          .catch((toggleError: unknown) => {
-                            setError(errorMessage(toggleError))
-                          })
-                      }}
-                    />
-                    <span
-                      className={`min-w-0 flex-1 truncate text-sm ${milestone.done ? 'text-muted line-through' : ''}`}
-                    >
-                      {milestone.title}
-                    </span>
-                    <button
-                      type="button"
-                      className="rounded-full px-2 py-1 text-xs text-muted disabled:opacity-30"
-                      disabled={index === 0}
-                      aria-label={`Move ${milestone.title} up`}
-                      onClick={() => {
-                        void moveMilestone(milestone.id, -1).catch((moveError: unknown) => {
-                          setError(errorMessage(moveError))
-                        })
-                      }}
-                    >
-                      Up
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-full px-2 py-1 text-xs text-muted disabled:opacity-30"
-                      disabled={!source || index === source.milestones.length - 1}
-                      aria-label={`Move ${milestone.title} down`}
-                      onClick={() => {
-                        void moveMilestone(milestone.id, 1).catch((moveError: unknown) => {
-                          setError(errorMessage(moveError))
-                        })
-                      }}
-                    >
-                      Down
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-full px-2 py-1 text-xs text-danger"
-                      onClick={() => {
-                        setPendingDelete(milestone)
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <button
+            type="button"
+            className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface px-4 py-3 text-left transition duration-150 ease-out hover:border-line"
+            onClick={onOpenMilestones}
+          >
+            <span className="text-sm font-medium">Milestones</span>
+            <span className="flex items-center gap-2 text-sm text-muted tabular-nums">
+              {view.milestoneTotal === 0
+                ? 'None yet'
+                : `${view.milestoneDone} of ${view.milestoneTotal}`}
+              <ChevronRight size={16} />
+            </span>
+          </button>
 
           <div>
             <h3 className="text-sm font-medium">Activity</h3>
@@ -346,36 +220,14 @@ export function ProgressPanel({ space, timer, onGoals }: ProgressPanelProps): Re
           </div>
         </>
       ) : null}
-      {pendingDelete ? (
-        <ConfirmDialog
-          title={`Delete ${pendingDelete.title}?`}
-          body="This removes the milestone from the checklist."
-          confirmLabel="Delete"
-          onCancel={() => {
-            setPendingDelete(null)
-          }}
-          onConfirm={() => {
-            const id = pendingDelete.id
-            setPendingDelete(null)
-            void window.api
-              .deleteMilestone(id)
-              .then(() => {
-                reload()
-              })
-              .catch((deleteError: unknown) => {
-                setError(errorMessage(deleteError))
-              })
-          }}
-        />
-      ) : null}
     </section>
   )
 }
 
 function Meter({ percent }: { percent: number }): React.JSX.Element {
   return (
-    <div className="mt-3 h-2 overflow-hidden rounded-full bg-bg">
-      <div className="h-full rounded-full bg-emerald-600" style={{ width: `${percent}%` }} />
+    <div className="meter mt-3">
+      <div className="meter-fill" style={{ width: `${percent}%` }} />
     </div>
   )
 }
@@ -440,7 +292,13 @@ function PaceLine({
     if (existing) existing.sec += extra
     else days.push({ date, sec: extra })
   }
-  const line = goalInsight(space, loggedSec, secondsInWindow(days, window.start, window.today), window.days, new Date(now))
+  const line = goalInsight(
+    space,
+    loggedSec,
+    secondsInWindow(days, window.start, window.today),
+    window.days,
+    new Date(now)
+  )
   if (!line) return null
   return <p className="text-sm text-muted">{line}</p>
 }

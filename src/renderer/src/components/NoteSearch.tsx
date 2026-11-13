@@ -85,7 +85,7 @@ export function NoteSearch({
       {tag ? (
         <button
           type="button"
-          className="w-fit rounded-md bg-accent px-3 py-1 text-xs text-white dark:text-[#14161c]"
+          className="w-fit rounded-md bg-accent px-3 py-1 text-xs text-on-accent"
           onClick={() => {
             onTag(null)
           }}
@@ -100,9 +100,7 @@ export function NoteSearch({
               key={name}
               type="button"
               className={`rounded-full px-2.5 py-1 text-xs ${
-                name === tag
-                  ? 'bg-accent text-white dark:text-[#14161c]'
-                  : 'bg-bg'
+                name === tag ? 'bg-accent text-on-accent' : 'bg-bg'
               }`}
               onClick={() => {
                 onTag(name === tag ? null : name)
@@ -134,9 +132,7 @@ export function NoteSearch({
                   {hit.tags.length > 0 ? ` · ${hit.tags.join(', ')}` : ''}
                 </span>
                 {hit.excerpt ? (
-                  <span className="mt-1 block text-sm text-muted">
-                    {hit.excerpt}
-                  </span>
+                  <span className="mt-1 block text-sm text-muted">{hit.excerpt}</span>
                 ) : null}
               </button>
             </li>

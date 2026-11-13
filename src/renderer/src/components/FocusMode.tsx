@@ -42,7 +42,6 @@ export function FocusMode({
   const ratio = pomodoro
     ? Math.min(1, Math.max(0, (blockSec - remaining) / Math.max(1, blockSec)))
     : 0
-  const color = space?.color ?? 'var(--accent)'
   const spaceName = space?.name ?? 'Focus'
 
   function rememberNote(value: string): void {
@@ -192,18 +191,18 @@ export function FocusMode({
   }
 
   return (
-    <div
-      className="focus-ambient fixed inset-0 z-40 flex flex-col items-center justify-center px-6 text-center"
-      style={{ ['--timer' as string]: color }}
-    >
-      <p className="text-sm font-medium text-muted">{space?.name ?? 'Focus'}</p>
-      <p className="timer-glow mt-4 text-7xl font-semibold tracking-tight tabular-nums sm:text-8xl">
+    <div className="focus-ambient fixed inset-0 z-40 flex flex-col items-center justify-center px-6 text-center">
+      <p className="flex items-center gap-2 text-sm text-muted">
+        {running ? <span className="timer-dot" aria-hidden /> : null}
+        {space?.name ?? 'Focus'}
+      </p>
+      <p className="mt-4 text-7xl font-semibold tracking-tight tabular-nums sm:text-8xl">
         {formatClock(timer.elapsed)}
       </p>
       {pomodoro ? (
         <div className="mt-6 flex flex-col items-center gap-3 text-sm text-muted">
           <div className="flex items-center gap-3">
-            <Ring ratio={ratio} color={color} />
+            <Ring ratio={ratio} />
             <span className="tabular-nums">
               {phase === 'offer-break'
                 ? `Cycle ${cycle} · Focus block finished`
@@ -226,7 +225,8 @@ export function FocusMode({
                 variant="secondary"
                 onClick={() => {
                   setPhase('focus')
-                  if (timer.session && !timer.session.running) void timer.start(timer.session.spaceId)
+                  if (timer.session && !timer.session.running)
+                    void timer.start(timer.session.spaceId)
                   arm('focus', focusMin * 60, true, cycle + 1)
                 }}
               >
@@ -318,7 +318,7 @@ export function FocusMode({
   )
 }
 
-function Ring({ ratio, color }: { ratio: number; color: string }): React.JSX.Element {
+function Ring({ ratio }: { ratio: number }): React.JSX.Element {
   const radius = 14
   const circumference = 2 * Math.PI * radius
   return (
@@ -329,7 +329,7 @@ function Ring({ ratio, color }: { ratio: number; color: string }): React.JSX.Ele
         cy="18"
         r={radius}
         fill="none"
-        stroke={color}
+        stroke="var(--text)"
         strokeWidth="3"
         strokeLinecap="round"
         strokeDasharray={`${circumference * ratio} ${circumference}`}
@@ -339,8 +339,5 @@ function Ring({ ratio, color }: { ratio: number; color: string }): React.JSX.Ele
 }
 
 function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
 }

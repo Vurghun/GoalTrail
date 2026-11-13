@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, Clock, Flame, Play, Square, Timer, TrendingUp } from 'lucide-react'
+import { CalendarDays, Clock, Flame, Play, Square, TrendingUp } from 'lucide-react'
 import {
   assembleDashboard,
   isBestDaySoFar,
@@ -10,6 +10,7 @@ import { goalInsight, paceWindow, secondsInWindow } from '@shared/insights'
 import type { Space } from '@shared/spaces'
 import { WEEKDAY_LABELS } from '@shared/settings'
 import { formatHoursMinutes, formatSessionDate, localDateKey, startOfWeek } from '@shared/time'
+import type { SpaceSection } from '@renderer/pages/SpacePage'
 import { Celebration } from '@renderer/components/Celebration'
 import { DashboardCharts } from '@renderer/components/DashboardCharts'
 import { Heatmap } from '@renderer/components/Heatmap'
@@ -27,7 +28,9 @@ interface DashboardPageProps {
   hasSpaces: boolean
   spaces: Space[]
   timer: TimerApi
-  onOpenSpace: (spaceId: string) => void
+  onOpenSpace: (spaceId: string, section?: SpaceSection) => void
+  onOpenMilestones: () => void
+  onOpenReview: () => void
   onOpenNote: (spaceId: string, noteId: string) => void
   onCreateSpace: () => void
 }
@@ -37,6 +40,8 @@ export function DashboardPage({
   spaces,
   timer,
   onOpenSpace,
+  onOpenMilestones,
+  onOpenReview,
   onOpenNote,
   onCreateSpace
 }: DashboardPageProps): React.JSX.Element {
@@ -70,37 +75,46 @@ export function DashboardPage({
 
   useSessionsChanged(() => {
     if (!hasSpaces) return
-    void window.api.getDashboard().then(setSource).catch((loadError: unknown) => {
-      setError(errorMessage(loadError))
-    })
+    void window.api
+      .getDashboard()
+      .then(setSource)
+      .catch((loadError: unknown) => {
+        setError(errorMessage(loadError))
+      })
   })
 
   const now = new Date(timer.now)
   const view = source ? assembleDashboard(source, timer.now, range, settings.weekStartsOn) : null
   const byId = new Map(spaces.map((space) => [space.id, space]))
-  const stats = source && view ? periodStats(source, view.todaySec, view.weekSec, settings.weekStartsOn, timer.now) : null
+  const stats =
+    source && view
+      ? periodStats(source, view.todaySec, view.weekSec, settings.weekStartsOn, timer.now)
+      : null
   const startable = spaces.filter((space) => space.status !== 'archived')
 
   const cheer = celebration(view, source, spaces, timer.now)
   const visibleCheer =
-    cheer && cheer.key !== goneCheer && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    cheer &&
+    cheer.key !== goneCheer &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
       ? cheer
       : null
 
   if (!hasSpaces) {
     return (
-      <main className="rise mx-auto flex w-full max-w-[720px] flex-col gap-8 px-8 py-16">
+      <main className="mx-auto flex w-full max-w-[720px] flex-col gap-8 px-8 py-16">
         <div>
-          <p className="text-sm font-medium text-accent">{greeting(now)}</p>
+          <p className="text-sm text-faint">{greeting(now)}</p>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight">Welcome to GoalTrail</h1>
           <p className="mt-3 max-w-lg text-base leading-relaxed text-muted">
-            One space for each thing you care about. Time, notes, and progress stay on this computer.
+            One space for each thing you care about. Time, notes, and progress stay on this
+            computer.
           </p>
         </div>
         <ol className="grid gap-3 sm:grid-cols-3">
           {['Create a space', 'Start a session', 'Look back on the week'].map((step, index) => (
             <li key={step} className="rounded-lg border border-border bg-surface p-4 shadow-card">
-              <p className="text-xs font-medium text-accent">Step {index + 1}</p>
+              <p className="text-xs font-medium text-faint">Step {index + 1}</p>
               <p className="mt-2 text-sm font-medium">{step}</p>
             </li>
           ))}
@@ -117,10 +131,10 @@ export function DashboardPage({
   }
 
   return (
-    <main className="rise mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-6 py-8">
+    <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-8 px-8 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-accent">{greeting(now)}</p>
+          <p className="text-sm text-faint">{greeting(now)}</p>
           <h1 className="mt-1 text-4xl font-semibold tracking-tight">
             {now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
           </h1>
@@ -174,10 +188,16 @@ export function DashboardPage({
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard icon={Clock} label="Today" seconds={view.todaySec} delta={stats.todayDelta} />
-            <StatCard icon={CalendarDays} label="This week" seconds={view.weekSec} delta={stats.weekDelta} />
-            <article className="rounded-lg border border-border bg-surface p-4 shadow-card">
+            <StatCard
+              icon={CalendarDays}
+              label="This week"
+              seconds={view.weekSec}
+              delta={stats.weekDelta}
+              onOpen={onOpenReview}
+            />
+            <article className="rounded-lg border border-border border-t-2 border-t-text bg-surface p-4 shadow-card">
               <div className="flex items-center gap-2 text-[13px] font-medium text-muted">
-                <Flame size={16} className="text-warning" />
+                <Flame size={16} />
                 Streak
               </div>
               <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">
@@ -199,10 +219,14 @@ export function DashboardPage({
                 aria-label={weekDotsLabel(stats.weekDots, settings.weekStartsOn)}
               >
                 {stats.weekDots.map((dot) => (
-                  <span key={dot.date} className="flex w-4 flex-col items-center gap-1" title={dot.label}>
+                  <span
+                    key={dot.date}
+                    className="flex w-4 flex-col items-center gap-1"
+                    title={dot.label}
+                  >
                     <span
                       className={`h-2 w-2 rounded-full ${
-                        dot.filled ? 'bg-accent' : dot.future ? 'border border-border' : 'bg-border'
+                        dot.filled ? 'bg-text' : dot.future ? 'border border-border' : 'bg-border'
                       }`}
                     />
                     <span className="text-[10px] leading-none text-faint">{dot.letter}</span>
@@ -210,8 +234,20 @@ export function DashboardPage({
                 ))}
               </div>
             </article>
-            <StatCard icon={TrendingUp} label="Total time" seconds={stats.totalSec} delta={stats.monthDelta} />
+            <StatCard
+              icon={TrendingUp}
+              label="Total time"
+              seconds={stats.totalSec}
+              delta={stats.monthDelta}
+            />
           </div>
+          <MilestoneStrip
+            spaces={source?.spaces ?? []}
+            onOpen={(spaceId) => {
+              onOpenSpace(spaceId, 'milestones')
+            }}
+            onOpenAll={onOpenMilestones}
+          />
           <DashboardCharts
             days={view.days}
             shares={view.shares}
@@ -221,7 +257,7 @@ export function DashboardPage({
           />
           <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
             <Heatmap days={source?.daySeconds ?? []} weekStartsOn={settings.weekStartsOn} />
-            <article className="rounded-lg border border-border bg-surface p-4 shadow-card">
+            <article className="rounded-lg border border-border border-t-2 border-t-text bg-surface p-4 shadow-card">
               <h2 className="text-base font-semibold tracking-tight">Insights</h2>
               <ul className="mt-3 space-y-2 text-sm text-muted">
                 {insightLines(source, spaces, timer.now).length === 0 ? (
@@ -235,7 +271,9 @@ export function DashboardPage({
           <section>
             <h2 className="text-base font-semibold tracking-tight">Active spaces</h2>
             {view.active.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">No active spaces. Restore one from the sidebar to see it here.</p>
+              <p className="mt-3 text-sm text-muted">
+                No active spaces. Restore one from the sidebar to see it here.
+              </p>
             ) : (
               <ul className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {view.active.map((card) => {
@@ -245,7 +283,7 @@ export function DashboardPage({
                   const days = space ? daysUntil(space.targetDate) : null
                   return (
                     <li key={card.id}>
-                      <article className="flex h-full flex-col rounded-lg border border-border bg-surface p-4 shadow-card transition duration-150 ease-out hover:-translate-y-0.5 hover:border-line">
+                      <article className="flex h-full flex-col rounded-lg border border-border border-t-2 border-t-text bg-surface p-4 transition duration-150 ease-out hover:border-line">
                         <button
                           type="button"
                           className="flex items-start gap-3 text-left"
@@ -255,27 +293,35 @@ export function DashboardPage({
                         >
                           <IconTile icon={card.icon} color={card.color} />
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-base font-medium">{card.name}</span>
+                            <span className="block truncate text-base font-medium">
+                              {card.name}
+                            </span>
                             <span className="mt-0.5 line-clamp-1 block text-sm text-muted">
                               {space?.description || 'Open this space'}
                             </span>
                           </span>
                         </button>
                         <div className="mt-4">
-                          <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                          <div className="meter">
                             <div
-                              className="h-full rounded-full"
-                              style={{ width: `${card.percent ?? 0}%`, backgroundColor: card.color }}
+                              className="meter-fill"
+                              style={{ width: `${card.percent ?? 0}%` }}
                             />
                           </div>
                           <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
                             <span className="tabular-nums">
-                              {space?.targetHours ? `${space.targetHours}h target` : formatHoursMinutes(card.loggedSec)}
+                              {space?.targetHours
+                                ? `${space.targetHours}h target`
+                                : formatHoursMinutes(card.loggedSec)}
                               {card.percent === null ? '' : ` · ${card.percent}%`}
                             </span>
                             {days !== null ? (
-                              <span className="rounded-full bg-accent-soft px-2 py-0.5 text-accent">
-                                {days > 0 ? `${days}d left` : days === 0 ? 'Due today' : 'Past target'}
+                              <span className="text-faint">
+                                {days > 0
+                                  ? `${days}d left`
+                                  : days === 0
+                                    ? 'Due today'
+                                    : 'Past target'}
                               </span>
                             ) : null}
                           </div>
@@ -283,15 +329,20 @@ export function DashboardPage({
                         <div className="mt-4 flex justify-end">
                           <button
                             type="button"
-                            aria-label={running ? 'Pause timer' : openHere ? 'Resume timer' : 'Start timer'}
-                            className="flex h-10 w-10 items-center justify-center rounded-full text-white transition duration-150 ease-out hover:scale-105 focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none"
-                            style={{ backgroundColor: card.color }}
+                            aria-label={
+                              running ? 'Pause timer' : openHere ? 'Resume timer' : 'Start timer'
+                            }
+                            className="flex h-10 w-10 items-center justify-center rounded-full bg-text text-surface transition duration-150 ease-out motion-safe:active:scale-95"
                             onClick={() => {
                               if (running) void timer.pause()
                               else void timer.start(card.id)
                             }}
                           >
-                            {running ? <Square size={14} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+                            {running ? (
+                              <Square size={14} fill="currentColor" />
+                            ) : (
+                              <Play size={16} fill="currentColor" />
+                            )}
                           </button>
                         </div>
                       </article>
@@ -304,10 +355,11 @@ export function DashboardPage({
           <section>
             <h2 className="text-base font-semibold tracking-tight">Recent notes</h2>
             {source && source.recentNotes.length === 0 ? (
-              <div className="mt-3 rounded-lg border border-dashed border-line bg-surface px-6 py-10 text-center">
-                <Timer className="mx-auto text-faint" size={28} />
-                <p className="mt-3 text-sm font-medium">No notes yet</p>
-                <p className="mt-1 text-sm text-muted">Open a space and write the first note for that goal.</p>
+              <div className="mt-3 rounded-lg border border-dashed border-line px-6 py-10 text-center">
+                <p className="text-sm font-medium">No notes yet</p>
+                <p className="mt-1 text-sm text-muted">
+                  Open a space and write the first note for that goal.
+                </p>
               </div>
             ) : (
               <ul className="mt-3 grid gap-2 md:grid-cols-2">
@@ -322,15 +374,15 @@ export function DashboardPage({
                           onOpenNote(note.spaceId, note.id)
                         }}
                       >
-                        <span className="block truncate text-sm font-medium">{note.title || 'Untitled'}</span>
+                        <span className="block truncate text-sm font-medium">
+                          {note.title || 'Untitled'}
+                        </span>
                         <span className="mt-2 flex items-center gap-2 text-xs text-muted">
-                          <span
-                            className="rounded-full px-2 py-0.5"
-                            style={{
-                              backgroundColor: space ? `color-mix(in srgb, ${space.color} 14%, transparent)` : undefined,
-                              color: space?.color
-                            }}
-                          >
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ backgroundColor: space?.color ?? 'var(--text)' }}
+                            />
                             {note.spaceName}
                           </span>
                           <span>{formatSessionDate(note.updatedAt)}</span>
@@ -379,9 +431,14 @@ function celebration(
     }
   }
   if (isBestDaySoFar(source, now)) {
-    notes.push({ key: `best-${localDateKey(new Date(now))}`, text: 'That is your best day so far.' })
+    notes.push({
+      key: `best-${localDateKey(new Date(now))}`,
+      text: 'That is your best day so far.'
+    })
   }
-  return notes.find((note) => localStorage.getItem(`goaltrail.celebrated.${note.key}`) !== '1') ?? null
+  return (
+    notes.find((note) => localStorage.getItem(`goaltrail.celebrated.${note.key}`) !== '1') ?? null
+  )
 }
 
 function insightLines(source: DashboardSource | null, spaces: Space[], now = Date.now()): string[] {
@@ -401,7 +458,11 @@ function insightLines(source: DashboardSource | null, spaces: Space[], now = Dat
         if (day.spaceId !== space.id) continue
         byDate.set(day.date, (byDate.get(day.date) ?? 0) + day.sec)
       }
-      if (source.live?.spaceId === space.id && liveDate >= window.start && liveDate <= window.today) {
+      if (
+        source.live?.spaceId === space.id &&
+        liveDate >= window.start &&
+        liveDate <= window.today
+      ) {
         byDate.set(liveDate, (byDate.get(liveDate) ?? 0) + liveExtra)
       }
       const logged = card.loggedSec + (source.live?.spaceId === space.id ? liveExtra : 0)
@@ -416,21 +477,93 @@ function insightLines(source: DashboardSource | null, spaces: Space[], now = Dat
     .slice(0, 3)
 }
 
+function MilestoneStrip({
+  spaces,
+  onOpen,
+  onOpenAll
+}: {
+  spaces: {
+    id: string
+    name: string
+    icon: string
+    color: string
+    status: string
+    milestoneDone: number
+    milestoneTotal: number
+  }[]
+  onOpen: (spaceId: string) => void
+  onOpenAll: () => void
+}): React.JSX.Element {
+  const rows = spaces
+    .filter((space) => space.status !== 'archived' && space.milestoneTotal > 0)
+    .slice(0, 5)
+  return (
+    <section>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-base font-semibold tracking-tight">Milestones</h2>
+        <button
+          type="button"
+          className="text-sm text-muted transition duration-150 hover:text-text"
+          onClick={onOpenAll}
+        >
+          View all
+        </button>
+      </div>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-sm text-muted">None yet.</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-border border-y border-border">
+          {rows.map((space) => {
+            const percent = Math.round((space.milestoneDone / space.milestoneTotal) * 100)
+            return (
+              <li key={space.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 py-3 text-left transition duration-150 hover:opacity-80"
+                  onClick={() => {
+                    onOpen(space.id)
+                  }}
+                >
+                  <IconTile icon={space.icon} color={space.color} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{space.name}</span>
+                  <span className="text-sm text-muted tabular-nums">
+                    {space.milestoneDone} of {space.milestoneTotal}
+                  </span>
+                  <span className="meter w-24" aria-hidden>
+                    <span className="meter-fill" style={{ width: `${percent}%` }} />
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 function StatCard({
   icon: Icon,
   label,
   seconds,
-  delta
+  delta,
+  onOpen
 }: {
   icon: typeof Clock
   label: string
   seconds: number
   delta: number | null
+  onOpen?: () => void
 }): React.JSX.Element {
   const up = delta !== null && delta > 0
   const down = delta !== null && delta < 0
   return (
-    <article className="rounded-lg border border-border bg-surface p-4 shadow-card">
+    <article
+      className={`rounded-lg border border-border border-t-2 border-t-text bg-surface p-4 shadow-card ${
+        onOpen ? 'cursor-pointer transition duration-150 hover:border-line' : ''
+      }`}
+      onClick={onOpen}
+    >
       <div className="flex items-center gap-2 text-[13px] font-medium text-muted">
         <Icon size={16} strokeWidth={1.75} />
         {label}
@@ -441,7 +574,9 @@ function StatCard({
       {delta === null ? (
         <p className="mt-1 text-xs text-faint">No earlier period to compare</p>
       ) : (
-        <p className={`mt-1 text-xs font-medium tabular-nums ${up ? 'text-success' : down ? 'text-danger' : 'text-faint'}`}>
+        <p
+          className={`mt-1 text-xs font-medium tabular-nums ${up ? 'text-success' : down ? 'text-danger' : 'text-faint'}`}
+        >
           {delta > 0 ? `+${delta}%` : `${delta}%`} vs previous
         </p>
       )}
@@ -534,7 +669,10 @@ function periodStats(
   return {
     todayDelta: delta(todaySec, totals.get(localDateKey(yesterday)) ?? 0),
     weekDelta: delta(weekSec, sumDays(totals, previousStart, daysSoFar)),
-    monthDelta: delta(sumDays(totals, monthStart, today.getDate()), sumDays(totals, prevMonthStart, prevMonthDays)),
+    monthDelta: delta(
+      sumDays(totals, monthStart, today.getDate()),
+      sumDays(totals, prevMonthStart, prevMonthDays)
+    ),
     totalSec,
     weekDots: dots
   }

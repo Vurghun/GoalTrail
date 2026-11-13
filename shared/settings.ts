@@ -12,7 +12,7 @@ export const WEEKDAY_LABELS = [
   'Saturday'
 ] as const
 
-export const ACCENTS = ['indigo', 'emerald', 'rose', 'amber'] as const
+export const ACCENTS = ['ink', 'indigo', 'emerald', 'rose', 'amber'] as const
 export type Accent = (typeof ACCENTS)[number]
 
 export const DENSITIES = ['comfortable', 'compact'] as const
@@ -43,7 +43,7 @@ export function defaultSettings(): AppSettings {
     theme: 'system',
     weekStartsOn: WEEK_STARTS_ON,
     dailyGoalMin: null,
-    accent: 'indigo',
+    accent: 'ink',
     density: 'comfortable',
     pomodoroFocusMin: 25,
     pomodoroBreakMin: 5,
@@ -137,10 +137,7 @@ function readBoolean(value: unknown, label: string): boolean {
 
 function readIdlePause(value: unknown): number | null {
   if (value === null) return null
-  if (
-    typeof value !== 'number' ||
-    !(IDLE_PAUSE_CHOICES as readonly number[]).includes(value)
-  ) {
+  if (typeof value !== 'number' || !(IDLE_PAUSE_CHOICES as readonly number[]).includes(value)) {
     throw new Error('Choose how long to wait before pausing.')
   }
   return value

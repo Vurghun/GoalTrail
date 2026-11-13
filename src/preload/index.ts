@@ -6,8 +6,9 @@ import type { PomodoroSnapshot } from '@shared/pomodoro'
 import type { SettingsSnapshot } from '@shared/settings'
 import type { Note, NoteSearchHit, NoteSummary, SavedNoteImage } from '@shared/notes'
 import type { Milestone, ProgressSource } from '@shared/progress'
+import type { WeeklyReview } from '@shared/review'
 import type { Space } from '@shared/spaces'
-import type { Session } from '@shared/time'
+import type { HistorySession, Session } from '@shared/time'
 
 function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   return ipcRenderer.invoke(channel, ...args) as Promise<T>
@@ -28,10 +29,12 @@ const api: GoalTrailApi = {
     invoke<Session | null>(IpcChannel.timerDiscardIdle, sessionId, idleSec),
   setSessionNote: (id, note) => invoke<Session>(IpcChannel.sessionsSetNote, id, note),
   listSessions: (spaceId) => invoke<Session[]>(IpcChannel.sessionsList, spaceId),
+  listSessionHistory: (spaceId) => invoke<HistorySession[]>(IpcChannel.sessionsHistory, spaceId),
   createSession: (spaceId, draft) => invoke<Session>(IpcChannel.sessionsCreate, spaceId, draft),
   updateSession: (id, draft) => invoke<Session>(IpcChannel.sessionsUpdate, id, draft),
   deleteSession: (id) => invoke<void>(IpcChannel.sessionsDelete, id),
   listNotes: (spaceId) => invoke<NoteSummary[]>(IpcChannel.notesList, spaceId),
+  listAllNotes: () => invoke<NoteSearchHit[]>(IpcChannel.notesListAll),
   getNote: (id) => invoke<Note>(IpcChannel.notesGet, id),
   createNote: (spaceId) => invoke<Note>(IpcChannel.notesCreate, spaceId),
   updateNote: (id, draft) => invoke<Note>(IpcChannel.notesUpdate, id, draft),
@@ -42,9 +45,9 @@ const api: GoalTrailApi = {
   searchNotes: (query) => invoke<NoteSearchHit[]>(IpcChannel.notesSearch, query),
   listTags: () => invoke<string[]>(IpcChannel.notesListTags),
   listMilestones: (spaceId) => invoke<Milestone[]>(IpcChannel.milestonesList, spaceId),
-  createMilestone: (spaceId, title) =>
-    invoke<Milestone>(IpcChannel.milestonesCreate, spaceId, title),
-  updateMilestone: (id, title) => invoke<Milestone>(IpcChannel.milestonesUpdate, id, title),
+  createMilestone: (spaceId, draft) =>
+    invoke<Milestone>(IpcChannel.milestonesCreate, spaceId, draft),
+  updateMilestone: (id, draft) => invoke<Milestone>(IpcChannel.milestonesUpdate, id, draft),
   setMilestoneDone: (id, done) => invoke<Milestone>(IpcChannel.milestonesSetDone, id, done),
   deleteMilestone: (id) => invoke<void>(IpcChannel.milestonesDelete, id),
   reorderMilestones: (spaceId, ids) =>
@@ -52,6 +55,7 @@ const api: GoalTrailApi = {
   setSpaceGoals: (spaceId, goals) => invoke<Space>(IpcChannel.spacesSetGoals, spaceId, goals),
   getProgress: (spaceId) => invoke<ProgressSource>(IpcChannel.progressGet, spaceId),
   getDashboard: () => invoke<DashboardSource>(IpcChannel.dashboardGet),
+  getWeeklyReview: () => invoke<WeeklyReview>(IpcChannel.reviewGet),
   getSettings: () => invoke<SettingsSnapshot>(IpcChannel.settingsGet),
   updateSettings: (patch) => invoke<SettingsSnapshot>(IpcChannel.settingsUpdate, patch),
   exportBackup: () => invoke<{ canceled: boolean }>(IpcChannel.backupExport),

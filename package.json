@@ -60,6 +60,7 @@
     "better-sqlite3": "^12.11.1",
     "fflate": "^0.8.3",
     "lucide-react": "^1.52.0",
+    "motion": "^14.13.0",
     "recharts": "^3.10.1"
   }
 }

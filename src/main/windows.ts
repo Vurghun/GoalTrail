@@ -6,8 +6,8 @@ let mainWindow: BrowserWindow | null = null
 let miniWindow: BrowserWindow | null = null
 let onHide: (() => void) | null = null
 
-const LIGHT = '#f5f6fa'
-const DARK = '#0f1115'
+const LIGHT = '#f7f7f7'
+const DARK = '#000000'
 
 function rendererUrl(view?: 'mini'): string | null {
   const base = process.env['ELECTRON_RENDERER_URL']
@@ -57,7 +57,7 @@ export function createMainWindow(): BrowserWindow {
     titleBarStyle: process.platform === 'win32' ? 'hidden' : 'default',
     titleBarOverlay:
       process.platform === 'win32'
-        ? { color: LIGHT, symbolColor: '#17191f', height: 40 }
+        ? { color: LIGHT, symbolColor: '#111111', height: 40 }
         : undefined,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -111,7 +111,7 @@ export function setWindowChrome(dark: boolean): void {
   if (process.platform === 'win32') {
     win.setTitleBarOverlay({
       color,
-      symbolColor: dark ? '#f4f5f8' : '#17191f',
+      symbolColor: dark ? '#f4f4f4' : '#111111',
       height: 40
     })
   }
@@ -133,7 +133,8 @@ export function openMiniTimer(): void {
     maximizable: false,
     skipTaskbar: true,
     show: false,
-    backgroundColor: DARK,
+    backgroundColor:
+      mainWindow && !mainWindow.isDestroyed() ? mainWindow.getBackgroundColor() : LIGHT,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

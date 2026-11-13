@@ -15,6 +15,12 @@ export interface Session {
   running: boolean
 }
 
+export interface HistorySession extends Session {
+  spaceName: string
+  spaceIcon: string
+  spaceColor: string
+}
+
 export interface SessionDraft {
   date: string
   durationSec: number

@@ -27,7 +27,7 @@ interface SpaceEditorProps {
   onDelete?: () => Promise<void>
 }
 
-const EXTRA_EMOJI = ['🎯', '📚', '✏️', '🏃', '🧠']
+const INK_COLORS = ['#111111', '#525252', '#a3a3a3'] as const
 
 export function SpaceEditor({
   mode,
@@ -108,7 +108,6 @@ export function SpaceEditor({
           void submit()
         }}
       >
-        <h2 className="text-base font-semibold tracking-tight">Details</h2>
         {dirty && mode === 'edit' ? <p className="text-xs text-warning">Unsaved changes</p> : null}
         <label className="block text-sm">
           <span className={labelClass}>Name</span>
@@ -141,39 +140,35 @@ export function SpaceEditor({
         <div className="text-sm">
           <span className={labelClass}>Icon</span>
           <div className="flex flex-wrap gap-1.5" role="listbox" aria-label="Icon">
-            {SPACE_ICON_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                aria-label={option.label}
-                aria-selected={icon === option.id}
-                className={`rounded-md p-0.5 ${icon === option.id ? 'ring-2 ring-accent' : ''}`}
-                onClick={() => {
-                  setIcon(option.id)
-                }}
-              >
-                <IconTile icon={option.id} color={color} size="sm" />
-              </button>
-            ))}
-            {EXTRA_EMOJI.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                aria-label={emoji}
-                className={`flex h-8 w-8 items-center justify-center rounded-md text-base ${icon === emoji ? 'ring-2 ring-accent' : ''}`}
-                onClick={() => {
-                  setIcon(emoji)
-                }}
-              >
-                {emoji}
-              </button>
-            ))}
+            {SPACE_ICON_OPTIONS.map((option) => {
+              const selected = icon === option.id
+              const Icon = option.icon
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-label={option.label}
+                  aria-selected={selected}
+                  className={`flex h-8 w-8 items-center justify-center rounded-md border transition duration-150 ${
+                    selected
+                      ? 'border-text bg-text text-surface'
+                      : 'border-border text-muted hover:border-line hover:text-text'
+                  }`}
+                  onClick={() => {
+                    setIcon(option.id)
+                  }}
+                >
+                  <Icon size={15} strokeWidth={1.75} />
+                </button>
+              )
+            })}
           </div>
           <input
             className={`${fieldClass} mt-2`}
             value={icon}
             maxLength={SPACE_ICON_MAX}
-            aria-label="Custom icon"
+            aria-label="Custom icon or emoji"
+            placeholder="Or type an emoji"
             onChange={(event) => {
               setIcon(event.target.value)
             }}
@@ -182,7 +177,7 @@ export function SpaceEditor({
         <div className="text-sm">
           <span className={labelClass}>Color</span>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
-            {SPACE_COLORS.map((swatch) => {
+            {[...INK_COLORS, ...SPACE_COLORS].map((swatch) => {
               const selected = swatch === color
               return (
                 <button
@@ -191,15 +186,15 @@ export function SpaceEditor({
                   role="radio"
                   aria-checked={selected}
                   aria-label={swatch}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-accent ${
-                    selected ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface' : ''
+                  className={`flex h-6 w-6 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-text ${
+                    selected ? 'ring-2 ring-text ring-offset-2 ring-offset-surface' : ''
                   }`}
                   style={{ backgroundColor: swatch }}
                   onClick={() => {
                     setColor(swatch)
                   }}
                 >
-                  {selected ? <Check size={14} className="text-white" /> : null}
+                  {selected ? <Check size={12} className="text-white" /> : null}
                 </button>
               )
             })}
@@ -207,23 +202,23 @@ export function SpaceEditor({
         </div>
 
         {embedded ? null : (
-        <label className="block text-sm">
-          <span className={labelClass}>Status</span>
-          <select
-            className={fieldClass}
-            value={status}
-            onChange={(event) => {
-              const next = event.target.value
-              if (isStatus(next)) setStatus(next)
-            }}
-          >
-            {SPACE_STATUSES.map((option) => (
-              <option key={option} value={option}>
-                {SPACE_STATUS_LABELS[option]}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="block text-sm">
+            <span className={labelClass}>Status</span>
+            <select
+              className={fieldClass}
+              value={status}
+              onChange={(event) => {
+                const next = event.target.value
+                if (isStatus(next)) setStatus(next)
+              }}
+            >
+              {SPACE_STATUSES.map((option) => (
+                <option key={option} value={option}>
+                  {SPACE_STATUS_LABELS[option]}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">

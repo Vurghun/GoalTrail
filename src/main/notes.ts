@@ -9,7 +9,12 @@ import {
   toFtsQuery
 } from '@shared/notes'
 import { getDatabase } from './db'
-import { deleteNoteImageFile, noteImageSrc, saveNoteImageFile } from './note-images'
+import {
+  deleteNoteImageFile,
+  noteImageSrc,
+  removeUnreferencedImageFiles,
+  saveNoteImageFile
+} from './note-images'
 
 interface NoteRow {
   id: string
@@ -308,22 +313,63 @@ function searchText(title: string, content: string, tags: string[]): string {
     .join('\n')
 }
 
+export function listAllNotes(): NoteSearchHit[] {
+  const rows = getDatabase()
+    .prepare<[], NoteRow>(
+      `SELECT n.id, n.space_id, n.title, n.content, n.pinned, n.created_at, n.updated_at,
+              s.name AS space_name
+       FROM notes n
+       JOIN spaces s ON s.id = n.space_id
+       ORDER BY n.pinned DESC, n.updated_at DESC`
+    )
+    .all()
+  const tags = tagsByNote(rows.map((row) => row.id))
+  return rows.map((row) => ({
+    ...toSummary(row, tags.get(row.id) ?? []),
+    spaceName: row.space_name ?? ''
+  }))
+}
+
+export function sweepOrphanNoteImages(): void {
+  const db = getDatabase()
+  const contents = db.prepare<[], { content: string }>('SELECT content FROM notes').all()
+  const referenced = new Set<string>()
+  for (const row of contents) {
+    for (const filePath of noteImagePaths(row.content)) referenced.add(filePath)
+  }
+
+  const stored = db
+    .prepare<[], { id: string; file_path: string }>('SELECT id, file_path FROM note_images')
+    .all()
+  const removeRow = db.prepare('DELETE FROM note_images WHERE id = ?')
+  for (const row of stored) {
+    if (referenced.has(row.file_path)) continue
+    removeRow.run(row.id)
+    deleteNoteImageFile(row.file_path)
+  }
+  removeUnreferencedImageFiles(referenced)
+}
+
 function toSummary(row: NoteRow, tags: string[]): NoteSummary {
+  const images = noteImagePaths(row.content)
+  const cover = images[0]
   return {
     id: row.id,
     spaceId: row.space_id,
     title: row.title,
     pinned: row.pinned === 1,
     tags,
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
-    excerpt: noteExcerpt(row.content)
+    excerpt: noteExcerpt(row.content),
+    imageCount: images.length,
+    coverSrc: cover ? noteImageSrc(cover) : null
   }
 }
 
 function toNote(row: NoteRow, tags: string[]): Note {
   return {
     ...toSummary(row, tags),
-    content: row.content,
-    createdAt: row.created_at
+    content: row.content
   }
 }

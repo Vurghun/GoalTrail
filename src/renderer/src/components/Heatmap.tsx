@@ -38,14 +38,16 @@ export function Heatmap({
     <article className="rounded-lg border border-border bg-surface p-4 shadow-card">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-base font-semibold tracking-tight">Last {weeks} weeks</h2>
-        <p className="text-xs text-faint">{run > 1 ? `${run}-day streak` : 'Each square is a day'}</p>
+        <p className="text-xs text-faint">
+          {run > 1 ? `${run}-day streak` : 'Each square is a day'}
+        </p>
       </div>
       <div className="mt-4 grid grid-flow-col grid-rows-7 gap-1" aria-label="Tracked days">
         {cells.map((cell) => (
           <span
             key={cell.date}
             title={`${cell.date}: ${formatHoursMinutes(cell.sec)}`}
-            className={`h-3.5 w-3.5 rounded-sm ${streak.has(cell.date) ? 'ring-1 ring-accent' : ''}`}
+            className={`h-3.5 w-3.5 rounded-sm ${streak.has(cell.date) ? 'ring-1 ring-text' : ''}`}
             style={{
               backgroundColor: cell.sec > 0 ? color : 'var(--border)',
               opacity: cell.sec > 0 ? 0.28 + 0.72 * (cell.sec / max) : 1

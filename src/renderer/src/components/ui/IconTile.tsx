@@ -16,7 +16,6 @@ import {
   Target,
   Zap
 } from 'lucide-react'
-import { tint } from '@renderer/components/ui/icons'
 
 export function IconTile({
   icon,
@@ -31,8 +30,8 @@ export function IconTile({
   const glyph = size === 'lg' ? 22 : size === 'sm' ? 15 : 18
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center rounded-md ${box}`}
-      style={{ backgroundColor: tint(color), color }}
+      className={`relative inline-flex shrink-0 items-center justify-center rounded-md border border-border bg-bg text-text ${box}`}
+      style={{ boxShadow: `inset ${size === 'lg' ? 3 : 2}px 0 0 ${color}` }}
     >
       <Glyph icon={icon} size={glyph} fallback={size === 'lg' ? 'text-2xl' : 'text-base'} />
     </span>
