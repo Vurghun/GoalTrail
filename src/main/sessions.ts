@@ -1,5 +1,12 @@
 import { randomUUID } from 'crypto'
-import { isoFromLocalDate, parseSessionDraft, type Session } from '@shared/time'
+import {
+  SESSION_DURATION_MAX_SEC,
+  SESSION_NOTE_MAX,
+  elapsedSec,
+  isoFromLocalDate,
+  parseSessionDraft,
+  type Session
+} from '@shared/time'
 import { getDatabase } from './db'
 
 interface SessionRow {
@@ -30,6 +37,61 @@ export function listSessions(spaceId: string): Session[] {
 export function getTimer(): Session | null {
   const row = findOpen()
   return row ? mapSession(row) : null
+}
+
+export function describeTimer(now = Date.now()): {
+  session: Session
+  spaceName: string
+  elapsed: number
+} | null {
+  const session = getTimer()
+  if (!session) return null
+  return {
+    session,
+    spaceName: spaceName(session.spaceId),
+    elapsed: elapsedSec(session, now)
+  }
+}
+
+export function spaceName(spaceId: string): string {
+  const row = getDatabase()
+    .prepare<[string], { name: string }>('SELECT name FROM spaces WHERE id = ?')
+    .get(spaceId)
+  return row?.name ?? 'Timer'
+}
+
+export function discardIdleTime(
+  sessionId: string,
+  idleSec: number
+): { session: Session | null; removedSec: number } {
+  if (!Number.isInteger(idleSec) || idleSec < 1 || idleSec > SESSION_DURATION_MAX_SEC) {
+    throw new Error('Idle time is invalid.')
+  }
+  const existing = findSession(sessionId)
+  if (!existing) throw new Error('Time entry was not found.')
+  if (existing.is_open === 1 && existing.resumed_at) {
+    throw new Error('Pause the timer before changing idle time.')
+  }
+  const removedSec = Math.min(idleSec, existing.duration_sec)
+  const next = existing.duration_sec - removedSec
+  if (next === 0 && existing.is_open === 0) {
+    getDatabase().prepare('DELETE FROM sessions WHERE id = ?').run(sessionId)
+    return { session: null, removedSec }
+  }
+  getDatabase().prepare('UPDATE sessions SET duration_sec = ? WHERE id = ?').run(next, sessionId)
+  return { session: requireSession(sessionId), removedSec }
+}
+
+export function setSessionNote(id: string, note: string): Session {
+  const clean = note.trim()
+  if ([...clean].length > SESSION_NOTE_MAX) {
+    throw new Error(`Note must be ${SESSION_NOTE_MAX} characters or fewer.`)
+  }
+  const existing = findSession(id)
+  if (!existing) throw new Error('Time entry was not found.')
+  if (existing.is_open === 1) throw new Error('Stop the timer before adding a wrap-up.')
+  getDatabase().prepare('UPDATE sessions SET note = ? WHERE id = ? AND is_open = 0').run(clean, id)
+  return requireSession(id)
 }
 
 export function startTimer(spaceId: string): Session {

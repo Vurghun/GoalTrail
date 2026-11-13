@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ACCENTS, WEEKDAY_LABELS, type Accent } from '@shared/settings'
+import { ACCENTS, IDLE_PAUSE_CHOICES, WEEKDAY_LABELS, type Accent } from '@shared/settings'
+import type { BackupStatus } from '@shared/backup'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { ThemeToggle } from '@renderer/components/ThemeToggle'
 import { useSettings } from '@renderer/hooks/useSettings'
@@ -19,6 +20,7 @@ export function SettingsPage(): React.JSX.Element {
   const [confirmImport, setConfirmImport] = useState(false)
   const [section, setSection] = useState<'appearance' | 'timer' | 'data' | 'about'>('appearance')
   const [version, setVersion] = useState('0.1.0')
+  const [backupStatus, setBackupStatus] = useState<BackupStatus | null>(null)
 
   useEffect(() => {
     let active = true
@@ -29,6 +31,19 @@ export function SettingsPage(): React.JSX.Element {
     })
     return () => {
       active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    const apply = (status: BackupStatus): void => {
+      if (active) setBackupStatus(status)
+    }
+    void window.api.getBackupStatus().then(apply)
+    const off = window.api.onBackupUpdated(apply)
+    return () => {
+      active = false
+      off()
     }
   }, [])
 
@@ -123,12 +138,11 @@ export function SettingsPage(): React.JSX.Element {
         <h1 className="text-[28px] font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted">How GoalTrail looks, times, and keeps your data.</p>
       </div>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted">
-          Theme, week, and a copy of everything on this computer.
+      {error ? (
+        <p className="text-sm text-danger" role="alert">
+          {error}
         </p>
-      </div>
+      ) : null}
 
       {section === 'appearance' ? (
       <section className="space-y-5 rounded-lg border border-border bg-surface p-5 shadow-card">
@@ -233,11 +247,81 @@ export function SettingsPage(): React.JSX.Element {
             }}
           />
         </Setting>
+        <Setting
+          label="Pause when away"
+          help="If you step away during a session, the timer pauses and asks whether to keep that time."
+        >
+          <select
+            className={fieldClass}
+            value={settings.idlePauseMin === null ? 'off' : String(settings.idlePauseMin)}
+            onChange={(event) => {
+              const value = event.target.value
+              void save({ idlePauseMin: value === 'off' ? null : Number(value) })
+            }}
+          >
+            <option value="off">Off</option>
+            {IDLE_PAUSE_CHOICES.map((minutes) => (
+              <option key={minutes} value={minutes}>
+                {minutes} minutes
+              </option>
+            ))}
+          </select>
+        </Setting>
+        <Setting
+          label="Desktop notifications"
+          help="When a focus block or break ends, when a daily goal is reached, and when the timer pauses because you stepped away."
+        >
+          <Switch
+            label="Desktop notifications"
+            checked={settings.notifications}
+            onChange={(next) => {
+              void save({ notifications: next })
+            }}
+          />
+        </Setting>
+        <Setting
+          label="End-of-day reminder"
+          help="Around 8:00 PM, one quiet note if today's goal is still open and the timer is stopped."
+        >
+          <Switch
+            label="End-of-day reminder"
+            checked={settings.endOfDayNudge}
+            disabled={!settings.notifications}
+            onChange={(next) => {
+              void save({ endOfDayNudge: next })
+            }}
+          />
+        </Setting>
       </section>
       ) : null}
 
       {section === 'data' ? (
-      <section className="space-y-4 rounded-lg border border-border bg-surface p-5 shadow-card">
+      <section className="space-y-5 rounded-lg border border-border bg-surface p-5 shadow-card">
+        <Setting
+          label="Automatic backups"
+          help="About once a day, GoalTrail saves a zip in a backups folder on this computer and keeps the latest 7. Manual export and import stay as they are."
+        >
+          <p className="break-all text-sm text-muted">
+            {backupStatus?.directory ?? 'Looking up the folder…'}
+          </p>
+          <p className="text-sm text-muted">
+            {backupStatus?.lastBackupAt
+              ? `Last backup ${new Date(backupStatus.lastBackupAt).toLocaleString(undefined, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short'
+                })}.`
+              : 'No automatic backup yet.'}
+          </p>
+          <button
+            type="button"
+            className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-accent-soft"
+            onClick={() => {
+              void window.api.showBackupsFolder()
+            }}
+          >
+            Open backups folder
+          </button>
+        </Setting>
         <Setting label="Backup" help="A full copy of spaces, notes, and time. Import replaces everything on this computer.">
         <p className="break-all text-sm text-muted">{databasePath ?? 'Looking up the folder…'}</p>
         <div className="flex flex-wrap gap-2">
@@ -292,11 +376,6 @@ export function SettingsPage(): React.JSX.Element {
           </button>
         </div>
         {message ? <p className="text-sm text-muted">{message}</p> : null}
-        {error ? (
-          <p className="text-sm text-danger" role="alert">
-            {error}
-          </p>
-        ) : null}
         </Setting>
       </section>
       ) : null}
@@ -326,6 +405,36 @@ export function SettingsPage(): React.JSX.Element {
       ) : null}
       </div>
     </div>
+  )
+}
+
+function Switch({
+  label,
+  checked,
+  disabled = false,
+  onChange
+}: {
+  label: string
+  checked: boolean
+  disabled?: boolean
+  onChange: (next: boolean) => void
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      className={`relative h-6 w-11 rounded-full transition duration-150 ${checked ? 'bg-accent' : 'bg-line'} disabled:opacity-50`}
+      onClick={() => {
+        onChange(!checked)
+      }}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition duration-150 ${checked ? 'translate-x-5' : ''}`}
+      />
+    </button>
   )
 }
 

@@ -40,6 +40,12 @@ export function useTimer(): {
   }, [])
 
   useEffect(() => {
+    return window.api.onTimerChanged(() => {
+      void refresh()
+    })
+  }, [refresh])
+
+  useEffect(() => {
     if (!session?.running) return
     const id = window.setInterval(() => {
       setNow(Date.now())

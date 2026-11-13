@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { PictureInPicture2, Search, Timer } from 'lucide-react'
+import type { IdlePrompt } from '@shared/idle'
+import type { SessionWrapUp } from '@shared/ipc'
 import { emptySpaceDraft, type SpaceDraft } from '@shared/spaces'
 import { CommandPalette } from '@renderer/components/CommandPalette'
 import { FocusMode } from '@renderer/components/FocusMode'
+import { IdlePromptDialog } from '@renderer/components/IdlePromptDialog'
+import { WrapUpDialog } from '@renderer/components/WrapUpDialog'
 import { ShortcutsModal } from '@renderer/components/ShortcutsModal'
 import { TemplateModal } from '@renderer/components/TemplateModal'
 import { NoteSearch } from '@renderer/components/NoteSearch'
@@ -16,6 +20,7 @@ import { useSpaces } from '@renderer/hooks/useSpaces'
 import { useTheme } from '@renderer/hooks/useTheme'
 import { useTimer } from '@renderer/hooks/useTimer'
 import { errorMessage } from '@renderer/lib/errors'
+import { pushToast } from '@renderer/lib/toast'
 import { DashboardPage } from '@renderer/pages/DashboardPage'
 import { SettingsPage } from '@renderer/pages/SettingsPage'
 import { SpaceEditor } from '@renderer/pages/SpaceEditor'
@@ -58,7 +63,11 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [createDraft, setCreateDraft] = useState<SpaceDraft | null>(null)
+  const [idlePrompt, setIdlePrompt] = useState<IdlePrompt | null>(null)
+  const [wrapUp, setWrapUp] = useState<SessionWrapUp | null>(null)
   const chordRef = useRef<string | null>(null)
+  const idlePromptRef = useRef<IdlePrompt | null>(null)
+  const wrapQueue = useRef<SessionWrapUp | null>(null)
   const selected = spaces.find((space) => space.id === selectedId) ?? null
   const timingSpace = spaces.find((space) => space.id === timer.session?.spaceId)
   const searching = searchQuery.trim().length > 0 || searchTag !== null
@@ -77,7 +86,35 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
   }, [])
 
   useEffect(() => {
+    const offIdle = window.api.onIdlePrompt((prompt) => {
+      idlePromptRef.current = prompt
+      setIdlePrompt(prompt)
+    })
+    const offWrap = window.api.onSessionWrapUp((session) => {
+      if (idlePromptRef.current) wrapQueue.current = session
+      else setWrapUp(session)
+    })
+    const offGoal = window.api.onGoalReached((goal) => {
+      if (!document.hidden) pushToast(`${goal.spaceName} is at today's goal`)
+    })
+    return () => {
+      offIdle()
+      offWrap()
+      offGoal()
+    }
+  }, [])
+
+  function closeIdlePrompt(): void {
+    idlePromptRef.current = null
+    setIdlePrompt(null)
+    const queued = wrapQueue.current
+    wrapQueue.current = null
+    if (queued) setWrapUp(queued)
+  }
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
+      if (idlePrompt || wrapUp) return
       const key = event.key.toLowerCase()
       const command = event.ctrlKey || event.metaKey
       if (key === 'escape') {
@@ -155,7 +192,7 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
     return () => {
       window.removeEventListener('keydown', onKey)
     }
-  }, [creating, selected, timer, focusOpen, paletteOpen, shortcutsOpen, templatesOpen])
+  }, [creating, selected, timer, focusOpen, paletteOpen, shortcutsOpen, templatesOpen, idlePrompt, wrapUp])
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-bg text-text">
@@ -460,6 +497,23 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
           breakMin={settings.pomodoroBreakMin}
           onClose={() => {
             setFocusOpen(false)
+          }}
+        />
+      ) : null}
+      {idlePrompt ? (
+        <IdlePromptDialog
+          prompt={idlePrompt}
+          onDone={closeIdlePrompt}
+          onRemoved={() => {
+            if (wrapQueue.current?.id === idlePrompt.sessionId) wrapQueue.current = null
+          }}
+        />
+      ) : null}
+      {wrapUp && !idlePrompt ? (
+        <WrapUpDialog
+          session={wrapUp}
+          onDone={() => {
+            setWrapUp(null)
           }}
         />
       ) : null}

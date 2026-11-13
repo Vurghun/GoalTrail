@@ -1,9 +1,23 @@
-import { app, BrowserWindow, dialog, protocol } from 'electron'
+import { app, dialog, protocol } from 'electron'
+import { IpcEvent } from '@shared/ipc'
 import { closeDatabase, openDatabase } from './db'
 import { registerIpcHandlers } from './ipc'
 import { registerNoteImageProtocol } from './note-images'
 import { pauseInterruptedTimer, pauseTimerForQuit } from './sessions'
-import { createMainWindow } from './windows'
+import { createMainWindow, sendToAll, sendToMain, setMainWindowHideHandler, showMainWindow } from './windows'
+import { createTray, hasTray, refreshTray } from './tray'
+import { trayImage } from './icon'
+import { notify, setNotificationIcon } from './notify'
+import { startIdleWatch } from './idle'
+import { checkDailyGoals, startGoalWatch } from './goals'
+import { startAutomaticBackups } from './backup'
+import { stopPomodoro } from './pomodoro'
+import { isQuitting, markQuitting, onSessionsMutated, onTimerMutated } from './runtime'
+
+// Windows toasts use this id. It matches electron-builder's appId.
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.goaltrail.desktop')
+}
 
 // The installer uses the display name GoalTrail. Keep the data folder named goaltrail.
 app.setName('goaltrail')
@@ -27,10 +41,6 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 app.whenReady().then(() => {
-  if (process.platform === 'win32') {
-    app.setAppUserModelId('com.goaltrail.desktop')
-  }
-
   try {
     openDatabase()
   } catch (error) {
@@ -45,20 +55,55 @@ app.whenReady().then(() => {
   pauseInterruptedTimer()
   registerNoteImageProtocol()
   registerIpcHandlers()
+  setNotificationIcon(trayImage(false))
+  try {
+    createTray()
+  } catch (error) {
+    console.error(error)
+  }
+  let toldAboutTray = false
+  setMainWindowHideHandler(() => {
+    if (toldAboutTray) return
+    toldAboutTray = true
+    notify(
+      'GoalTrail is still open',
+      'The window is in the tray. Quit from the tray menu when you want to leave.',
+      'low'
+    )
+  })
+  onTimerMutated(() => {
+    refreshTray()
+    sendToAll(IpcEvent.timerChanged)
+    try {
+      checkDailyGoals()
+    } catch (error) {
+      console.error(error)
+    }
+  })
+  onSessionsMutated(() => {
+    sendToAll(IpcEvent.sessionsChanged)
+  })
   createMainWindow()
+  startIdleWatch()
+  startGoalWatch()
+  startAutomaticBackups((status) => {
+    sendToMain(IpcEvent.backupUpdated, status)
+  })
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
+    showMainWindow()
   })
 })
 
 app.on('before-quit', () => {
+  markQuitting()
+  stopPomodoro()
   pauseTimerForQuit()
   closeDatabase()
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  if (process.platform === 'darwin') return
+  if (hasTray()) return
+  if (!isQuitting()) app.quit()
 })

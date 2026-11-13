@@ -6,7 +6,10 @@ import type {
   NoteSummary,
   SavedNoteImage
 } from './notes'
+import type { BackupStatus } from './backup'
 import type { DashboardSource } from './dashboard'
+import type { IdlePrompt } from './idle'
+import type { PomodoroComplete, PomodoroSnapshot, PomodoroStart } from './pomodoro'
 import type { AppSettings, SettingsSnapshot } from './settings'
 import type { Milestone, ProgressSource, SpaceGoals } from './progress'
 import type { Space, SpaceDraft } from './spaces'
@@ -25,10 +28,12 @@ export const IpcChannel = {
   timerStart: 'timer:start',
   timerPause: 'timer:pause',
   timerStop: 'timer:stop',
+  timerDiscardIdle: 'timer:discard-idle',
   sessionsList: 'sessions:list',
   sessionsCreate: 'sessions:create',
   sessionsUpdate: 'sessions:update',
   sessionsDelete: 'sessions:delete',
+  sessionsSetNote: 'sessions:set-note',
   notesList: 'notes:list',
   notesGet: 'notes:get',
   notesCreate: 'notes:create',
@@ -51,12 +56,38 @@ export const IpcChannel = {
   settingsUpdate: 'settings:update',
   backupExport: 'backup:export',
   backupImport: 'backup:import',
+  backupStatus: 'backup:status',
+  backupShowFolder: 'backup:show-folder',
+  pomodoroStart: 'pomodoro:start',
+  pomodoroStop: 'pomodoro:stop',
+  pomodoroGet: 'pomodoro:get',
   dataExport: 'data:export',
   dataFolderShow: 'data-folder:show',
   windowChrome: 'window:chrome',
   windowMiniOpen: 'window:mini-open',
   windowMiniClose: 'window:mini-close'
 } as const
+
+export const IpcEvent = {
+  timerChanged: 'timer:changed',
+  sessionsChanged: 'sessions:changed',
+  idlePrompt: 'idle:prompt',
+  sessionWrapUp: 'session:wrap-up',
+  pomodoroComplete: 'pomodoro:complete',
+  backupUpdated: 'backup:updated',
+  goalReached: 'goal:reached'
+} as const
+
+export interface GoalReached {
+  spaceName: string
+}
+
+export interface SessionWrapUp {
+  id: string
+  spaceId: string
+  spaceName: string
+  durationSec: number
+}
 
 export interface AppInfo {
   name: string
@@ -76,6 +107,8 @@ export interface GoalTrailApi {
   startTimer: (spaceId: string) => Promise<Session>
   pauseTimer: () => Promise<Session>
   stopTimer: () => Promise<Session | null>
+  discardIdle: (sessionId: string, idleSec: number) => Promise<Session | null>
+  setSessionNote: (id: string, note: string) => Promise<Session>
   listSessions: (spaceId: string) => Promise<Session[]>
   createSession: (spaceId: string, draft: SessionDraft) => Promise<Session>
   updateSession: (id: string, draft: SessionDraft) => Promise<Session>
@@ -102,9 +135,21 @@ export interface GoalTrailApi {
   updateSettings: (patch: Partial<AppSettings>) => Promise<SettingsSnapshot>
   exportBackup: () => Promise<{ canceled: boolean }>
   importBackup: () => Promise<{ canceled: boolean }>
+  getBackupStatus: () => Promise<BackupStatus>
+  showBackupsFolder: () => Promise<void>
+  startPomodoro: (input: PomodoroStart) => Promise<PomodoroSnapshot>
+  stopPomodoro: () => Promise<void>
+  getPomodoro: () => Promise<PomodoroSnapshot | null>
   exportData: (format: 'json' | 'csv') => Promise<{ canceled: boolean }>
   showDataFolder: () => Promise<void>
   setWindowChrome: (dark: boolean) => Promise<void>
   openMiniTimer: () => Promise<void>
   closeMiniTimer: () => Promise<void>
+  onTimerChanged: (listener: () => void) => () => void
+  onSessionsChanged: (listener: () => void) => () => void
+  onIdlePrompt: (listener: (prompt: IdlePrompt) => void) => () => void
+  onSessionWrapUp: (listener: (session: SessionWrapUp) => void) => () => void
+  onPomodoroComplete: (listener: (event: PomodoroComplete) => void) => () => void
+  onBackupUpdated: (listener: (status: BackupStatus) => void) => () => void
+  onGoalReached: (listener: (goal: GoalReached) => void) => () => void
 }

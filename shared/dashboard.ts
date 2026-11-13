@@ -162,6 +162,29 @@ export function assembleDashboard(
   }
 }
 
+const BEST_DAY_MIN_SEC = 30 * 60
+
+/** True when today, including a running session, beats every other day on record. */
+export function isBestDaySoFar(source: DashboardSource, now: number): boolean {
+  const totals = new Map<string, number>()
+  for (const day of source.daySeconds) {
+    totals.set(day.date, (totals.get(day.date) ?? 0) + day.sec)
+  }
+  if (source.live) {
+    const extra = Math.max(0, Math.floor((now - Date.parse(source.live.resumedAt)) / 1000))
+    const key = localDateKey(new Date(source.live.startedAt))
+    totals.set(key, (totals.get(key) ?? 0) + extra)
+  }
+  const today = localDateKey(new Date(now))
+  const todaySec = totals.get(today) ?? 0
+  if (todaySec < BEST_DAY_MIN_SEC) return false
+  let bestOther = 0
+  for (const [date, sec] of totals) {
+    if (date !== today && sec > bestOther) bestOther = sec
+  }
+  return todaySec > bestOther
+}
+
 function shiftDate(key: string, amount: number): string {
   const [year, month, day] = key.split('-').map(Number)
   const date = new Date(year ?? 1970, (month ?? 1) - 1, (day ?? 1) + amount)
