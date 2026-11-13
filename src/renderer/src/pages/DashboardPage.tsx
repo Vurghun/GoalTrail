@@ -8,7 +8,8 @@ import {
 } from '@shared/dashboard'
 import { goalInsight, paceWindow, secondsInWindow } from '@shared/insights'
 import type { Space } from '@shared/spaces'
-import { formatHoursMinutes, formatSessionDate, localDateKey } from '@shared/time'
+import { WEEKDAY_LABELS } from '@shared/settings'
+import { formatHoursMinutes, formatSessionDate, localDateKey, startOfWeek } from '@shared/time'
 import { Celebration } from '@renderer/components/Celebration'
 import { DashboardCharts } from '@renderer/components/DashboardCharts'
 import { Heatmap } from '@renderer/components/Heatmap'
@@ -192,12 +193,20 @@ export function DashboardPage({
                     ? 'Track today to start a streak'
                     : 'Days in a row'}
               </p>
-              <div className="mt-3 flex gap-1.5" aria-hidden>
-                {stats.weekDots.map((filled, index) => (
-                  <span
-                    key={index}
-                    className={`h-2 w-2 rounded-full ${filled ? 'bg-accent' : 'bg-border'}`}
-                  />
+              <div
+                className="mt-3 flex gap-2"
+                role="img"
+                aria-label={weekDotsLabel(stats.weekDots, settings.weekStartsOn)}
+              >
+                {stats.weekDots.map((dot) => (
+                  <span key={dot.date} className="flex w-4 flex-col items-center gap-1" title={dot.label}>
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        dot.filled ? 'bg-accent' : dot.future ? 'border border-border' : 'bg-border'
+                      }`}
+                    />
+                    <span className="text-[10px] leading-none text-faint">{dot.letter}</span>
+                  </span>
                 ))}
               </div>
             </article>
@@ -211,7 +220,7 @@ export function DashboardPage({
             onRange={setRange}
           />
           <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-            <Heatmap days={source?.daySeconds ?? []} />
+            <Heatmap days={source?.daySeconds ?? []} weekStartsOn={settings.weekStartsOn} />
             <article className="rounded-lg border border-border bg-surface p-4 shadow-card">
               <h2 className="text-base font-semibold tracking-tight">Insights</h2>
               <ul className="mt-3 space-y-2 text-sm text-muted">
@@ -467,13 +476,27 @@ function daysUntil(date: string | null): number | null {
   return Math.round((target.getTime() - today.getTime()) / 86400000)
 }
 
+interface WeekDot {
+  date: string
+  filled: boolean
+  future: boolean
+  label: string
+  letter: string
+}
+
 function periodStats(
   source: DashboardSource,
   todaySec: number,
   weekSec: number,
   weekStartsOn: number,
   now: number
-): { todayDelta: number | null; weekDelta: number | null; monthDelta: number | null; totalSec: number; weekDots: boolean[] } {
+): {
+  todayDelta: number | null
+  weekDelta: number | null
+  monthDelta: number | null
+  totalSec: number
+  weekDots: WeekDot[]
+} {
   const totals = new Map<string, number>()
   for (const day of source.daySeconds) totals.set(day.date, (totals.get(day.date) ?? 0) + day.sec)
   if (source.live) {
@@ -482,10 +505,10 @@ function periodStats(
     totals.set(key, (totals.get(key) ?? 0) + extra)
   }
   const today = new Date(now)
+  const todayKey = localDateKey(today)
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)
-  const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() - weekStartsOn + 7) % 7))
+  const weekStart = startOfWeek(today, weekStartsOn)
   const daysSoFar = Math.round((today.setHours(0, 0, 0, 0) - weekStart.getTime()) / 86400000) + 1
   const previousStart = new Date(weekStart)
   previousStart.setDate(weekStart.getDate() - 7)
@@ -494,11 +517,19 @@ function periodStats(
   const prevMonthDays = new Date(today.getFullYear(), today.getMonth(), 0).getDate()
   let totalSec = 0
   for (const sec of totals.values()) totalSec += sec
-  const dots: boolean[] = []
-  for (let offset = 6; offset >= 0; offset -= 1) {
-    const day = new Date()
-    day.setDate(day.getDate() - offset)
-    dots.push((totals.get(localDateKey(day)) ?? 0) > 0)
+  const dots: WeekDot[] = []
+  for (let index = 0; index < 7; index += 1) {
+    const day = new Date(weekStart)
+    day.setDate(weekStart.getDate() + index)
+    const date = localDateKey(day)
+    const future = date > todayKey
+    dots.push({
+      date,
+      filled: !future && (totals.get(date) ?? 0) > 0,
+      future,
+      label: day.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }),
+      letter: day.toLocaleDateString(undefined, { weekday: 'narrow' })
+    })
   }
   return {
     todayDelta: delta(todaySec, totals.get(localDateKey(yesterday)) ?? 0),
@@ -507,6 +538,13 @@ function periodStats(
     totalSec,
     weekDots: dots
   }
+}
+
+function weekDotsLabel(dots: WeekDot[], weekStartsOn: number): string {
+  const start = WEEKDAY_LABELS[weekStartsOn] ?? 'Monday'
+  const studied = dots.filter((dot) => dot.filled).map((dot) => dot.label)
+  if (studied.length === 0) return `This week starting ${start}. No days tracked yet.`
+  return `This week starting ${start}. Tracked ${studied.join(', ')}.`
 }
 
 function sumDays(totals: Map<string, number>, start: Date, count: number): number {

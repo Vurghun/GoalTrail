@@ -10,6 +10,8 @@ import type { useTimer } from '@renderer/hooks/useTimer'
 type TimerApi = ReturnType<typeof useTimer>
 type Phase = 'focus' | 'break' | 'offer-break' | 'offer-resume'
 
+const focusNotes = new Map<string, string>()
+
 export function FocusMode({
   space,
   timer,
@@ -23,26 +25,47 @@ export function FocusMode({
   breakMin: number
   onClose: () => void
 }): React.JSX.Element {
-  const [note, setNote] = useState('')
+  const sessionId = timer.session?.id ?? ''
+  const [note, setNote] = useState(() => focusNotes.get(sessionId) ?? '')
   const [pomodoro, setPomodoro] = useState(false)
   const [phase, setPhase] = useState<Phase>('focus')
   const [remaining, setRemaining] = useState(focusMin * 60)
   const [endsAt, setEndsAt] = useState<number | null>(null)
+  const [cycle, setCycle] = useState(1)
+  const [blockSec, setBlockSec] = useState(focusMin * 60)
   const [saving, setSaving] = useState(false)
   const alive = useRef(true)
   const phaseRef = useRef<Phase>('focus')
+  const localEpoch = useRef(0)
   const running = timer.session?.running ?? false
   const refresh = timer.refresh
-  const phaseTotal = (phase === 'break' || phase === 'offer-resume' ? breakMin : focusMin) * 60
-  const ratio = pomodoro ? Math.min(1, (phaseTotal - remaining) / Math.max(1, phaseTotal)) : 0
+  const ratio = pomodoro
+    ? Math.min(1, Math.max(0, (blockSec - remaining) / Math.max(1, blockSec)))
+    : 0
   const color = space?.color ?? 'var(--accent)'
   const spaceName = space?.name ?? 'Focus'
 
+  function rememberNote(value: string): void {
+    setNote(value)
+    if (sessionId.length === 0) return
+    if (value.length === 0) focusNotes.delete(sessionId)
+    else focusNotes.set(sessionId, value)
+  }
+
   useEffect(() => {
     alive.current = true
+    const epoch = localEpoch.current
+    void window.api.getPomodoro().then((snap) => {
+      if (!alive.current || localEpoch.current !== epoch || !snap) return
+      setPomodoro(true)
+      setPhase(snap.phase)
+      setRemaining(snap.remainingSec)
+      setEndsAt(snap.endsAt)
+      setCycle(snap.cycle)
+      setBlockSec(snap.durationSec)
+    })
     return () => {
       alive.current = false
-      void window.api.stopPomodoro()
     }
   }, [])
 
@@ -55,8 +78,16 @@ export function FocusMode({
     if (phase !== 'focus' && phase !== 'break') return
     const id = window.setTimeout(() => {
       void window.api.getPomodoro().then((snap) => {
-        if (!alive.current || snap) return
-        setPhase(phase === 'focus' ? 'offer-break' : 'offer-resume')
+        if (!alive.current) return
+        if (snap && (snap.phase === 'focus' || snap.phase === 'break')) return
+        setEndsAt(null)
+        setRemaining(0)
+        if (snap && (snap.phase === 'offer-break' || snap.phase === 'offer-resume')) {
+          setPhase(snap.phase)
+          setCycle(snap.cycle)
+        } else {
+          setPhase(phase === 'focus' ? 'offer-break' : 'offer-resume')
+        }
         void refresh()
       })
     }, 800)
@@ -113,21 +144,35 @@ export function FocusMode({
     }
   }, [pomodoro])
 
-  function arm(nextPhase: 'focus' | 'break', seconds: number, ticking: boolean): void {
+  function arm(
+    nextPhase: 'focus' | 'break',
+    seconds: number,
+    ticking: boolean,
+    nextCycle: number
+  ): void {
+    localEpoch.current += 1
+    const epoch = localEpoch.current
+    setCycle(nextCycle)
+    setBlockSec(seconds)
     void window.api
       .startPomodoro({
         phase: nextPhase,
         durationSec: seconds,
         spaceName,
-        ticking
+        ticking,
+        cycle: nextCycle
       })
       .then((snap) => {
-        if (!alive.current) return
+        if (!alive.current || localEpoch.current !== epoch) return
         setRemaining(snap.remainingSec)
         setEndsAt(snap.endsAt)
+        setCycle(snap.cycle)
+        setBlockSec(snap.durationSec)
       })
       .catch(() => {
-        if (alive.current) pushToast('Could not start the Pomodoro')
+        if (!alive.current || localEpoch.current !== epoch) return
+        setPomodoro(false)
+        pushToast('Could not start the Pomodoro')
       })
   }
 
@@ -139,7 +184,7 @@ export function FocusMode({
       const title = note.trim().slice(0, 80)
       const content = `<p>${escapeHtml(note.trim())}</p>`
       await window.api.updateNote(created.id, { title, content, tags: [] })
-      setNote('')
+      rememberNote('')
       pushToast('Note saved')
     } finally {
       setSaving(false)
@@ -160,7 +205,11 @@ export function FocusMode({
           <div className="flex items-center gap-3">
             <Ring ratio={ratio} color={color} />
             <span className="tabular-nums">
-              {phase === 'break' || phase === 'offer-resume' ? 'Break' : 'Focus'} · {formatClock(remaining)}
+              {phase === 'offer-break'
+                ? `Cycle ${cycle} · Focus block finished`
+                : phase === 'offer-resume'
+                  ? `Cycle ${cycle} · Break finished`
+                  : `Cycle ${cycle} · ${phase === 'break' ? 'Break' : 'Focus'} · ${formatClock(remaining)}`}
             </span>
           </div>
           {phase === 'offer-break' ? (
@@ -168,7 +217,7 @@ export function FocusMode({
               <Button
                 onClick={() => {
                   setPhase('break')
-                  arm('break', breakMin * 60, true)
+                  arm('break', breakMin * 60, true, cycle)
                 }}
               >
                 Start {breakMin}m break
@@ -178,7 +227,7 @@ export function FocusMode({
                 onClick={() => {
                   setPhase('focus')
                   if (timer.session && !timer.session.running) void timer.start(timer.session.spaceId)
-                  arm('focus', focusMin * 60, true)
+                  arm('focus', focusMin * 60, true, cycle + 1)
                 }}
               >
                 Keep studying
@@ -190,7 +239,7 @@ export function FocusMode({
               onClick={() => {
                 setPhase('focus')
                 if (timer.session) void timer.start(timer.session.spaceId)
-                arm('focus', focusMin * 60, true)
+                arm('focus', focusMin * 60, true, cycle + 1)
               }}
             >
               Resume session
@@ -230,7 +279,7 @@ export function FocusMode({
           value={note}
           placeholder="Capture a thought without leaving the timer"
           onChange={(event) => {
-            setNote(event.target.value)
+            rememberNote(event.target.value)
           }}
         />
       </label>
@@ -244,16 +293,19 @@ export function FocusMode({
           aria-pressed={pomodoro}
           onClick={() => {
             if (pomodoro) {
+              localEpoch.current += 1
               setPomodoro(false)
               setPhase('focus')
               setEndsAt(null)
               setRemaining(focusMin * 60)
+              setCycle(1)
+              setBlockSec(focusMin * 60)
               void window.api.stopPomodoro()
               return
             }
             setPomodoro(true)
             setPhase('focus')
-            arm('focus', focusMin * 60, running)
+            arm('focus', focusMin * 60, running, 1)
           }}
         >
           {pomodoro ? 'Hide Pomodoro' : 'Show Pomodoro'}

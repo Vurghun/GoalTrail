@@ -491,6 +491,7 @@ function AppShell({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }): R
       ) : null}
       {focusOpen && timer.session ? (
         <FocusMode
+          key={timer.session.id}
           space={timingSpace}
           timer={timer}
           focusMin={settings.pomodoroFocusMin}

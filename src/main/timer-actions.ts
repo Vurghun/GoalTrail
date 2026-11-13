@@ -4,12 +4,14 @@ import { IpcEvent } from '@shared/ipc'
 import { takeIdlePrompt } from './idle'
 import { pausePomodoroIfFocus, resumePomodoroIfFocus, stopPomodoro } from './pomodoro'
 import { timerMutated } from './runtime'
-import { pauseTimer, spaceName, startTimer, stopTimer } from './sessions'
+import { getTimer, pauseTimer, spaceName, startTimer, stopTimer } from './sessions'
 import { sendToMain, showMainWindow } from './windows'
 
 export function userStartTimer(spaceId: string): Session {
+  const previous = getTimer()
   const session = startTimer(spaceId)
-  resumePomodoroIfFocus()
+  if (previous && previous.id !== session.id) stopPomodoro()
+  else resumePomodoroIfFocus()
   timerMutated()
   return session
 }

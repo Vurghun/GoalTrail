@@ -2,7 +2,13 @@ import { app, ipcMain } from 'electron'
 import { APP_NAME, IpcChannel, type AppInfo } from '@shared/ipc'
 import { parsePomodoroStart } from '@shared/pomodoro'
 import { getDatabasePath } from './db'
-import { exportBackup, getBackupStatus, importBackup, showBackupsFolder } from './backup'
+import {
+  exportBackup,
+  getBackupStatus,
+  importBackup,
+  restoreAutomaticBackup,
+  showBackupsFolder
+} from './backup'
 import { exportData } from './export-data'
 import { closeMiniTimer, openMiniTimer, setWindowChrome } from './windows'
 import { getDashboard } from './dashboard'
@@ -165,10 +171,19 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.settingsGet, () => getSettings())
   ipcMain.handle(IpcChannel.settingsUpdate, (_event, input: unknown) => updateSettings(input))
   ipcMain.handle(IpcChannel.backupExport, () => exportBackup())
-  ipcMain.handle(IpcChannel.backupImport, () => importBackup())
+  ipcMain.handle(IpcChannel.backupImport, async () => {
+    const result = await importBackup()
+    if (!result.canceled) stopPomodoro()
+    return result
+  })
   ipcMain.handle(IpcChannel.backupStatus, () => getBackupStatus())
   ipcMain.handle(IpcChannel.backupShowFolder, () => {
     showBackupsFolder()
+  })
+  ipcMain.handle(IpcChannel.backupRestore, (_event, name: unknown) => {
+    if (typeof name !== 'string') throw new Error('Choose a backup from the list.')
+    restoreAutomaticBackup(name)
+    stopPomodoro()
   })
   ipcMain.handle(IpcChannel.pomodoroStart, (_event, input: unknown) => startPomodoro(parsePomodoroStart(input)))
   ipcMain.handle(IpcChannel.pomodoroStop, () => {

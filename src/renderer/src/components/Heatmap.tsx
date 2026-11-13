@@ -1,20 +1,22 @@
 import type { DaySeconds } from '@shared/progress'
-import { formatHoursMinutes, localDateKey } from '@shared/time'
+import { WEEK_STARTS_ON, formatHoursMinutes, localDateKey, startOfWeek } from '@shared/time'
 
 export function Heatmap({
   days,
   weeks = 12,
-  color = 'var(--accent)'
+  color = 'var(--accent)',
+  weekStartsOn = WEEK_STARTS_ON
 }: {
   days: DaySeconds[]
   weeks?: number
   color?: string
+  weekStartsOn?: number
 }): React.JSX.Element {
   const byDate = new Map(days.map((day) => [day.date, day.sec]))
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const start = new Date(today)
-  start.setDate(start.getDate() - start.getDay() - 7 * (weeks - 1))
+  const start = startOfWeek(today, weekStartsOn)
+  start.setDate(start.getDate() - 7 * (weeks - 1))
   const cells: DaySeconds[] = []
   for (let index = 0; index < weeks * 7; index += 1) {
     const day = new Date(start)

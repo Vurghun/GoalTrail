@@ -58,6 +58,7 @@ export const IpcChannel = {
   backupImport: 'backup:import',
   backupStatus: 'backup:status',
   backupShowFolder: 'backup:show-folder',
+  backupRestore: 'backup:restore',
   pomodoroStart: 'pomodoro:start',
   pomodoroStop: 'pomodoro:stop',
   pomodoroGet: 'pomodoro:get',
@@ -137,6 +138,7 @@ export interface GoalTrailApi {
   importBackup: () => Promise<{ canceled: boolean }>
   getBackupStatus: () => Promise<BackupStatus>
   showBackupsFolder: () => Promise<void>
+  restoreAutomaticBackup: (name: string) => Promise<void>
   startPomodoro: (input: PomodoroStart) => Promise<PomodoroSnapshot>
   stopPomodoro: () => Promise<void>
   getPomodoro: () => Promise<PomodoroSnapshot | null>

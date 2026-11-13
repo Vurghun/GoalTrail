@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ACCENTS, IDLE_PAUSE_CHOICES, WEEKDAY_LABELS, type Accent } from '@shared/settings'
-import type { BackupStatus } from '@shared/backup'
+import type { AutomaticBackup, BackupStatus } from '@shared/backup'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { ThemeToggle } from '@renderer/components/ThemeToggle'
 import { useSettings } from '@renderer/hooks/useSettings'
@@ -18,6 +18,7 @@ export function SettingsPage(): React.JSX.Element {
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmImport, setConfirmImport] = useState(false)
+  const [pendingBackup, setPendingBackup] = useState<AutomaticBackup | null>(null)
   const [section, setSection] = useState<'appearance' | 'timer' | 'data' | 'about'>('appearance')
   const [version, setVersion] = useState('0.1.0')
   const [backupStatus, setBackupStatus] = useState<BackupStatus | null>(null)
@@ -77,12 +78,18 @@ export function SettingsPage(): React.JSX.Element {
   }
 
   async function onImport(): Promise<void> {
+    const chosen = pendingBackup
     setConfirmImport(false)
+    setPendingBackup(null)
     setBusy(true)
     setError(null)
     try {
-      const result = await window.api.importBackup()
-      if (result.canceled) return
+      if (chosen) {
+        await window.api.restoreAutomaticBackup(chosen.name)
+      } else {
+        const result = await window.api.importBackup()
+        if (result.canceled) return
+      }
       const next = await window.api.getSettings()
       storeTheme(next.theme)
       window.location.reload()
@@ -193,7 +200,10 @@ export function SettingsPage(): React.JSX.Element {
       {section === 'timer' ? (
       <section className="space-y-5 rounded-lg border border-border bg-surface p-5 shadow-card">
 
-        <Setting label="Week starts on" help="Used for weekly totals and streaks.">
+        <Setting
+          label="Week starts on"
+          help="Used for weekly totals, the streak week, and the activity grid."
+        >
         <select
           className={fieldClass}
           value={settings.weekStartsOn}
@@ -225,26 +235,18 @@ export function SettingsPage(): React.JSX.Element {
           }}
         />
         </Setting>
-        <Setting label="Pomodoro focus" help="Shown as a ring in Focus mode.">
-          <input
-            className={fieldClass}
-            inputMode="numeric"
+        <Setting label="Pomodoro focus" help="Shown as a ring in Focus mode. Saved when you leave the field.">
+          <MinutesField
+            label="Pomodoro focus minutes"
             value={settings.pomodoroFocusMin}
-            onChange={(event) => {
-              const value = Number(event.target.value)
-              if (Number.isInteger(value)) void save({ pomodoroFocusMin: value })
-            }}
+            onCommit={(minutes) => save({ pomodoroFocusMin: minutes })}
           />
         </Setting>
-        <Setting label="Pomodoro break" help="The short rest after a focus block.">
-          <input
-            className={fieldClass}
-            inputMode="numeric"
+        <Setting label="Pomodoro break" help="The short rest after a focus block. Saved when you leave the field.">
+          <MinutesField
+            label="Pomodoro break minutes"
             value={settings.pomodoroBreakMin}
-            onChange={(event) => {
-              const value = Number(event.target.value)
-              if (Number.isInteger(value)) void save({ pomodoroBreakMin: value })
-            }}
+            onCommit={(minutes) => save({ pomodoroBreakMin: minutes })}
           />
         </Setting>
         <Setting
@@ -299,19 +301,42 @@ export function SettingsPage(): React.JSX.Element {
       <section className="space-y-5 rounded-lg border border-border bg-surface p-5 shadow-card">
         <Setting
           label="Automatic backups"
-          help="About once a day, GoalTrail saves a zip in a backups folder on this computer and keeps the latest 7. Manual export and import stay as they are."
+          help="About once a day, GoalTrail saves a zip in a backups folder on this computer and keeps the latest 7. Restore one here, or keep using manual export and import."
         >
           <p className="break-all text-sm text-muted">
             {backupStatus?.directory ?? 'Looking up the folder…'}
           </p>
           <p className="text-sm text-muted">
             {backupStatus?.lastBackupAt
-              ? `Last backup ${new Date(backupStatus.lastBackupAt).toLocaleString(undefined, {
-                  dateStyle: 'medium',
-                  timeStyle: 'short'
-                })}.`
+              ? `Last backup ${formatBackupWhen(backupStatus.lastBackupAt)}.`
               : 'No automatic backup yet.'}
           </p>
+          {backupStatus && backupStatus.backups.length > 0 ? (
+            <ul className="space-y-2">
+              {backupStatus.backups.map((backup) => (
+                <li
+                  key={backup.name}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+                >
+                  <span className="text-sm">
+                    {formatBackupWhen(backup.modifiedAt)}
+                    <span className="text-muted"> · {formatBytes(backup.bytes)}</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-accent-soft disabled:opacity-50"
+                    disabled={busy}
+                    onClick={() => {
+                      setPendingBackup(backup)
+                      setConfirmImport(true)
+                    }}
+                  >
+                    Restore
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <button
             type="button"
             className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-accent-soft"
@@ -349,6 +374,7 @@ export function SettingsPage(): React.JSX.Element {
             className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-accent-soft disabled:opacity-50"
             disabled={busy}
             onClick={() => {
+              setPendingBackup(null)
               setConfirmImport(true)
             }}
           >
@@ -393,19 +419,80 @@ export function SettingsPage(): React.JSX.Element {
       {confirmImport ? (
         <ConfirmDialog
           title="Replace all data?"
-          body="Importing a backup replaces every space, note, and time entry on this computer."
-          confirmLabel="Import"
+          body={
+            pendingBackup
+              ? `Restoring the backup from ${formatBackupWhen(pendingBackup.modifiedAt)} replaces every space, note, and time entry on this computer.`
+              : 'Importing a backup replaces every space, note, and time entry on this computer.'
+          }
+          confirmLabel={pendingBackup ? 'Restore' : 'Import'}
           onConfirm={() => {
             void onImport()
           }}
           onCancel={() => {
             setConfirmImport(false)
+            setPendingBackup(null)
           }}
         />
       ) : null}
       </div>
     </div>
   )
+}
+
+function MinutesField({
+  value,
+  label,
+  onCommit
+}: {
+  value: number
+  label: string
+  onCommit: (minutes: number) => Promise<boolean>
+}): React.JSX.Element {
+  const [draft, setDraft] = useState<string | null>(null)
+  const shown = draft ?? String(value)
+
+  function commit(current: string): void {
+    const raw = current.trim()
+    const clearIfCurrent = (): void => {
+      setDraft((existing) => (existing === current ? null : existing))
+    }
+    if (raw === String(value)) {
+      clearIfCurrent()
+      return
+    }
+    void onCommit(Number(raw)).then((saved) => {
+      if (saved) clearIfCurrent()
+    })
+  }
+
+  return (
+    <input
+      className={fieldClass}
+      inputMode="numeric"
+      aria-label={label}
+      value={shown}
+      onChange={(event) => {
+        setDraft(event.target.value)
+      }}
+      onBlur={(event) => {
+        commit(event.currentTarget.value)
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter') return
+        event.currentTarget.blur()
+      }}
+    />
+  )
+}
+
+function formatBackupWhen(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function Switch({

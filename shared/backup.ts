@@ -1,10 +1,17 @@
 export const AUTO_BACKUP_KEEP = 7
 export const AUTO_BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000
 
+export interface AutomaticBackup {
+  name: string
+  modifiedAt: string
+  bytes: number
+}
+
 export interface BackupStatus {
   lastBackupAt: string | null
   directory: string
   kept: number
+  backups: AutomaticBackup[]
 }
 
 export function backupsToPrune<T extends { mtimeMs: number; name: string }>(
