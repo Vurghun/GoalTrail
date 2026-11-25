@@ -1,6 +1,6 @@
 {
   "name": "goaltrail",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "author": "GoalTrail contributors",
   "license": "MIT",
@@ -18,10 +18,10 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "lint": "eslint --cache .",
     "format": "prettier --write .",
-    "package": "npm run build && electron-builder --config",
-    "package:win": "npm run build && electron-builder --win --config",
-    "package:mac": "npm run build && electron-builder --mac --config",
-    "package:linux": "npm run build && electron-builder --linux --config",
+    "package": "npm run build && electron-builder --config --publish never",
+    "package:win": "npm run build && electron-builder --win --config --publish never",
+    "package:mac": "npm run build && electron-builder --mac --config --publish never",
+    "package:linux": "npm run build && electron-builder --linux --config --publish never",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3"
   },
