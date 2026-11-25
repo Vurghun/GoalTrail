@@ -42,10 +42,10 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Publish a draft release
+      - name: Publish the release
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          draft: false
           fail_on_unmatched_files: false
           files: |
             dist/*.exe

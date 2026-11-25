@@ -30,7 +30,7 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
-  artifactName: ${productName}-${version}-setup.${ext}
+  artifactName: GoalTrail-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   # Fresh installs create both shortcuts. The setup page can remove either one.

@@ -2,6 +2,18 @@
 
 GoalTrail is a local-first desktop app for personal goals and study. Each goal is a space. You track time on it, keep notes (including images), and watch milestones, streaks, and charts. Your data stays on this computer.
 
+## Install
+
+Download the Windows setup and open it:
+
+**[Download GoalTrail for Windows](https://github.com/Vurghun/GoalTrail/releases/latest/download/GoalTrail-setup.exe)**
+
+1. If Windows says it protected your PC, choose **More info**, then **Run anyway**. The installer is not signed.
+2. Choose whether to install for you or for everyone on the PC.
+3. Leave the desktop and Start menu shortcuts checked if you want to open GoalTrail from those places.
+
+The same file is on the [releases page](https://github.com/Vurghun/GoalTrail/releases/latest).
+
 ## Screenshots
 
 Images are not in the repo yet. Add them under [`docs/screenshots/`](docs/screenshots/README.md):
@@ -32,22 +44,12 @@ Shortcuts (Command on macOS):
 | Ctrl+N       | New note in the open space                 |
 | Ctrl+Shift+T | Start or stop the timer for the open space |
 
-## Install
-
-When a version tag such as `v0.1.0` is pushed, GitHub Actions builds installers and attaches them to a draft release.
-
-- Windows: `GoalTrail-<version>-setup.exe`
-- macOS: `GoalTrail-<version>-<arch>.dmg` (the build is unsigned, so macOS may ask you to approve it)
-- Linux: `GoalTrail-<version>-<arch>.AppImage` or the `.deb` package
-
-You can also build an installer yourself. See [Build an installer](#build-an-installer).
-
 ## Develop
 
 You need Node.js 20.19 or newer.
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Vurghun/GoalTrail.git
 cd goaltrail
 npm install
 npm run dev
