@@ -11,6 +11,7 @@ import {
   Settings
 } from 'lucide-react'
 import type { Space } from '@shared/spaces'
+import { BrandMark } from '@renderer/components/BrandMark'
 import { IconTile } from '@renderer/components/ui/IconTile'
 
 interface SpaceSidebarProps {
@@ -60,10 +61,15 @@ export function SpaceSidebar(props: SpaceSidebarProps): React.JSX.Element {
         collapsed ? 'w-[72px]' : 'w-[260px]'
       }`}
     >
-      <div className={`px-4 pt-5 pb-3 ${collapsed ? 'px-2 text-center' : ''}`}>
-        <p className={`font-semibold tracking-tight ${collapsed ? 'text-sm' : 'text-[15px]'}`}>
-          {collapsed ? 'G' : 'GoalTrail'}
-        </p>
+      <div
+        className={`flex items-center gap-2.5 pt-5 pb-3 ${collapsed ? 'justify-center px-2' : 'px-4'}`}
+      >
+        <BrandMark className="h-8 w-8 shrink-0 text-text" />
+        {collapsed ? (
+          <span className="sr-only">GoalTrail</span>
+        ) : (
+          <p className="text-[15px] font-semibold tracking-tight">GoalTrail</p>
+        )}
       </div>
       <nav className="space-y-1 px-2" aria-label="Main">
         <NavButton

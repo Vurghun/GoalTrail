@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand-light.svg" />
+    <img src="build/icon.svg" width="96" height="96" alt="GoalTrail" />
+  </picture>
+</p>
+
 # GoalTrail
 
 GoalTrail is a local-first desktop app for personal goals and study. Each goal is a space. You track time on it, keep notes (including images), and watch milestones, streaks, and charts. Your data stays on this computer.

@@ -1,6 +1,6 @@
-import { app, Menu, Tray, type MenuItemConstructorOptions } from 'electron'
+import { app, Menu, nativeTheme, Tray, type MenuItemConstructorOptions } from 'electron'
 import { formatClock } from '@shared/time'
-import { trayImage } from './icon'
+import { trayIconKey, trayImage } from './icon'
 import { markQuitting, setTrayReady } from './runtime'
 import { describeTimer } from './sessions'
 import { userPauseTimer, userStartTimer, userStopTimer } from './timer-actions'
@@ -27,6 +27,7 @@ export function createTray(): void {
     tray.setContextMenu(buildMenu(null))
   }
   setTrayReady(true)
+  nativeTheme.on('updated', refreshTray)
   refreshTray()
   setInterval(refreshTray, 1000)
 }
@@ -43,7 +44,7 @@ export function refreshTray(): void {
   if (process.platform === 'darwin') {
     tray.setTitle(running && described ? ` ${formatClock(described.elapsed)}` : '')
   }
-  const nextIcon = running ? 'run' : 'idle'
+  const nextIcon = trayIconKey(running)
   if (nextIcon !== iconKey) {
     iconKey = nextIcon
     tray.setImage(trayImage(running))

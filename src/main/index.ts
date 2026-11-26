@@ -13,7 +13,7 @@ import {
   showMainWindow
 } from './windows'
 import { createTray, hasTray, refreshTray } from './tray'
-import { trayImage } from './icon'
+import { appIcon } from './icon'
 import { notify, setNotificationIcon } from './notify'
 import { startIdleWatch } from './idle'
 import { checkDailyGoals, startGoalWatch } from './goals'
@@ -67,7 +67,11 @@ app.whenReady().then(() => {
   }
   registerNoteImageProtocol()
   registerIpcHandlers()
-  setNotificationIcon(trayImage(false))
+  setNotificationIcon(appIcon())
+  if (process.platform === 'darwin' && app.dock) {
+    const icon = appIcon()
+    if (!icon.isEmpty()) app.dock.setIcon(icon)
+  }
   try {
     createTray()
   } catch (error) {

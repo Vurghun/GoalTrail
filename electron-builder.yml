@@ -23,6 +23,7 @@ asarUnpack:
 # postinstall already rebuilds the addon for Electron. A second rebuild fails on some Windows setups.
 npmRebuild: false
 win:
+  icon: build/icon.ico
   executableName: GoalTrail
   target:
     - nsis
@@ -38,12 +39,14 @@ nsis:
   createStartMenuShortcut: true
   include: build/installer.nsh
 mac:
+  icon: build/icon.icns
   category: public.app-category.productivity
   target:
     - dmg
     - zip
   artifactName: ${productName}-${version}-${arch}.${ext}
 linux:
+  icon: build/icons
   target:
     - AppImage
     - deb
